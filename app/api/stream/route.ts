@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { STREAM_URL } from '@/lib/constants';
-import { getUserFromRequest, userHasAccess } from '@/lib/supabase/server';
+import {
+  getTokenFromRequest,
+  getUserFromRequest,
+  resolveUserAccess,
+} from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
   const user = await getUserFromRequest(request);
@@ -8,7 +12,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const paid = await userHasAccess(user.id);
+  const token = getTokenFromRequest(request);
+  const paid = await resolveUserAccess(user, token);
   if (!paid) {
     return NextResponse.json({ error: 'Payment required' }, { status: 402 });
   }

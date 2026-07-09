@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import StreamPlayer from '@/components/StreamPlayer';
+import LiveChat from '@/components/LiveChat';
 import { CHECKOUT_LABEL } from '@/lib/constants';
 import { getSupabaseClient } from '@/lib/supabase/client';
 
@@ -354,16 +355,22 @@ export default function UFCAccess() {
           </div>
         )}
 
-        {view === 'stream' && isLoggedIn && streamUrl && (
-          <div className="space-y-4 sm:space-y-8">
+        {view === 'stream' && isLoggedIn && streamUrl && session && (
+          <div className="space-y-4 sm:space-y-6">
             <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest text-red-500 sm:gap-4 sm:text-sm">
               <div className="h-2 w-2 animate-pulse rounded-full bg-red-500 sm:h-3 sm:w-3" />
               Live broadcast in progress
             </div>
-            <StreamPlayer src={streamUrl} />
-            <p className="text-center text-xs text-gray-500 sm:text-sm">
-              Rotate your phone to landscape for fullscreen
-            </p>
+
+            <div className="grid gap-4 lg:grid-cols-[1fr_340px] lg:items-start lg:gap-6">
+              <div className="space-y-4">
+                <StreamPlayer src={streamUrl} />
+                <p className="text-center text-xs text-gray-500 sm:text-sm">
+                  Rotate your phone to landscape for fullscreen
+                </p>
+              </div>
+              <LiveChat session={session} />
+            </div>
           </div>
         )}
       </main>

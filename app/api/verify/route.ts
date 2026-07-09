@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 import {
+  getTokenFromRequest,
   getUserFromRequest,
   recordPurchase,
-  userHasAccess,
+  resolveUserAccess,
+  stripeSessionMatchesUser,
 } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
@@ -13,6 +15,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Please log in first' }, { status: 401 });
     }
 
+    const token = getTokenFromRequest(request);
     const { sessionId } = (await request.json()) as { sessionId?: string };
     if (!sessionId) {
       return NextResponse.json({ error: 'Missing session' }, { status: 400 });
@@ -23,13 +26,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ paid: false });
     }
 
-    const sessionUserId = session.metadata?.user_id ?? session.client_reference_id;
-    if (sessionUserId !== user.id) {
-      return NextResponse.json({ error: 'Payment does not match this account' }, { status: 403 });
+    if (!stripeSessionMatchesUser(session, user)) {
+      return NextResponse.json(
+        { error: 'Payment does not match this account' },
+        { status: 403 }
+      );
     }
 
     await recordPurchase(user.id, session.id);
-    const paid = await userHasAccess(user.id);
+    const paid = await resolveUserAccess(user, token);
 
     return NextResponse.json({ paid });
   } catch (error) {

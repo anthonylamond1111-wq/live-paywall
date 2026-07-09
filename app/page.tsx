@@ -78,8 +78,15 @@ export default function UFCAccess() {
       }
 
       const accessRes = await authFetch(activeSession, '/api/access');
+      if (accessRes.status === 401) {
+        setView('auth');
+        setMessage('Your session expired. Please log in again.');
+        return;
+      }
+
       if (!accessRes.ok) {
         setView('pay');
+        setMessage('Could not verify access. Try refreshing the page.');
         return;
       }
 
@@ -90,6 +97,9 @@ export default function UFCAccess() {
       }
 
       setView('pay');
+      setMessage(
+        `No payment found for ${activeSession.user.email}. Log in with the same email you used at checkout (your Stripe receipt).`
+      );
     },
     [unlockStream]
   );

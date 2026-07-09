@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 
 export function getServiceSupabase(): SupabaseClient | null {
@@ -47,7 +48,12 @@ async function queryPurchaseExists(
     .eq('user_id', userId)
     .limit(1);
 
-  return !error && (data?.length ?? 0) > 0;
+  if (error) {
+    // Table missing or RLS — fall through to Stripe check
+    return false;
+  }
+
+  return (data?.length ?? 0) > 0;
 }
 
 export async function userHasAccess(
@@ -56,13 +62,15 @@ export async function userHasAccess(
 ): Promise<boolean> {
   const service = getServiceSupabase();
   if (service) {
-    return queryPurchaseExists(service, userId);
+    const hasPurchase = await queryPurchaseExists(service, userId);
+    if (hasPurchase) return true;
   }
 
   if (accessToken) {
     const authed = getAuthedSupabase(accessToken);
     if (authed) {
-      return queryPurchaseExists(authed, userId);
+      const hasPurchase = await queryPurchaseExists(authed, userId);
+      if (hasPurchase) return true;
     }
   }
 
@@ -71,12 +79,7 @@ export async function userHasAccess(
 
 export async function recordPurchase(userId: string, stripeSessionId: string) {
   const supabase = getServiceSupabase();
-  if (!supabase) {
-    console.error(
-      'Cannot record purchase: SUPABASE_SERVICE_ROLE_KEY is not set in environment'
-    );
-    return false;
-  }
+  if (!supabase) return false;
 
   const { error } = await supabase.from('purchases').upsert(
     { user_id: userId, stripe_session_id: stripeSessionId },
@@ -116,30 +119,47 @@ export function stripeSessionMatchesUser(
   return email.toLowerCase() === user.email.toLowerCase();
 }
 
-export async function syncStripePurchasesForUser(user: User): Promise<boolean> {
-  if (!user.email) return false;
+function isPaidCheckoutSession(session: Stripe.Checkout.Session) {
+  return session.payment_status === 'paid' || session.status === 'complete';
+}
+
+export async function findPaidStripeSessionForUser(
+  user: User
+): Promise<Stripe.Checkout.Session | null> {
+  if (!user.email) return null;
 
   const stripe = getStripe();
-  const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+  const since = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+  let startingAfter: string | undefined;
 
-  try {
+  for (let page = 0; page < 10; page++) {
     const sessions = await stripe.checkout.sessions.list({
       status: 'complete',
       limit: 100,
-      created: { gte: sevenDaysAgo },
+      created: { gte: since },
+      starting_after: startingAfter,
     });
 
     for (const checkoutSession of sessions.data) {
-      if (checkoutSession.payment_status !== 'paid') continue;
-      if (!stripeSessionMatchesUser(checkoutSession, user)) continue;
-      await recordPurchase(user.id, checkoutSession.id);
+      if (!isPaidCheckoutSession(checkoutSession)) continue;
+      if (stripeSessionMatchesUser(checkoutSession, user)) {
+        return checkoutSession;
+      }
     }
 
-    return await userHasAccess(user.id);
-  } catch (error) {
-    console.error('Stripe purchase sync error:', error);
-    return false;
+    if (!sessions.has_more || sessions.data.length === 0) break;
+    startingAfter = sessions.data[sessions.data.length - 1].id;
   }
+
+  return null;
+}
+
+export async function syncStripePurchasesForUser(user: User): Promise<boolean> {
+  const checkoutSession = await findPaidStripeSessionForUser(user);
+  if (!checkoutSession) return false;
+
+  await recordPurchase(user.id, checkoutSession.id);
+  return true;
 }
 
 export async function resolveUserAccess(

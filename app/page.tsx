@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import StreamPlayer from '@/components/StreamPlayer';
+import StreamPlayer, { useStreamFullscreen } from '@/components/StreamPlayer';
 import LiveChat from '@/components/LiveChat';
 import { CHECKOUT_LABEL } from '@/lib/constants';
 import { getSupabaseClient } from '@/lib/supabase/client';
 
-type View = 'loading' | 'auth' | 'pay' | 'stream';
+type View = 'loading' | 'auth' | 'pay' | 'success' | 'stream';
 
 async function authFetch(
   session: Session,
@@ -33,6 +33,9 @@ export default function UFCAccess() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [playerMode, setPlayerMode] = useState<'normal' | 'fullscreen'>('normal');
+  const [purchaseJustCompleted, setPurchaseJustCompleted] = useState(false);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
 
   const unlockStream = useCallback(async (activeSession: Session) => {
     const streamRes = await authFetch(activeSession, '/api/stream');
@@ -69,7 +72,8 @@ export default function UFCAccess() {
           const { paid } = await verifyRes.json();
           if (paid) {
             window.history.replaceState({}, '', window.location.pathname);
-            await unlockStream(activeSession);
+            setPurchaseJustCompleted(true);
+            setView('success');
             return;
           }
         }
@@ -92,7 +96,7 @@ export default function UFCAccess() {
 
       const { paid } = await accessRes.json();
       if (paid) {
-        await unlockStream(activeSession);
+        setView('success');
         return;
       }
 
@@ -180,6 +184,15 @@ export default function UFCAccess() {
     }
   };
 
+  const handleWatchStream = async () => {
+    if (!session) return;
+
+    setBusy(true);
+    setMessage('');
+    await unlockStream(session);
+    setBusy(false);
+  };
+
   const handleCheckout = async () => {
     if (!session) {
       setView('auth');
@@ -214,12 +227,56 @@ export default function UFCAccess() {
     await supabase.auth.signOut();
     setSession(null);
     setStreamUrl(null);
+    setPlayerMode('normal');
+    setPurchaseJustCompleted(false);
     setView('auth');
     setMessage('');
   };
 
+  const { enter: enterNativeFullscreen, exit: exitNativeFullscreen } =
+    useStreamFullscreen(fullscreenRef);
+
+  const handleEnterFullscreen = async () => {
+    setPlayerMode('fullscreen');
+    window.setTimeout(async () => {
+      const entered = await enterNativeFullscreen();
+      if (!entered) {
+        // CSS overlay fallback is already active via playerMode
+      }
+    }, 50);
+  };
+
+  const handleExitFullscreen = async () => {
+    await exitNativeFullscreen();
+    setPlayerMode('normal');
+  };
+
+  const handleBackToHome = () => {
+    setPlayerMode('normal');
+    setStreamUrl(null);
+    setView('success');
+  };
+
+  useEffect(() => {
+    if (playerMode !== 'fullscreen') return;
+
+    document.body.style.overflow = 'hidden';
+
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setPlayerMode('normal');
+      }
+    };
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+    };
+  }, [playerMode]);
+
   const isLoggedIn = !!session;
-  const showEvent = isLoggedIn && view === 'pay';
+  const showEvent = isLoggedIn && (view === 'pay' || view === 'success');
   const showAuthGate = !isLoggedIn || view === 'auth';
 
   return (
@@ -365,21 +422,101 @@ export default function UFCAccess() {
           </div>
         )}
 
-        {view === 'stream' && isLoggedIn && streamUrl && session && (
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest text-red-500 sm:gap-4 sm:text-sm">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-red-500 sm:h-3 sm:w-3" />
-              Live broadcast in progress
+        {view === 'success' && isLoggedIn && (
+          <div className="mx-auto max-w-md text-center">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 text-3xl sm:mb-8 sm:h-20 sm:w-20 sm:text-4xl">
+              ✓
             </div>
+            <h2 className="mb-3 text-2xl font-bold text-green-400 sm:mb-4 sm:text-4xl">
+              {purchaseJustCompleted ? 'Purchase successful!' : "You're cleared to watch"}
+            </h2>
+            <p className="mb-8 text-sm text-gray-400 sm:mb-10 sm:text-base">
+              {purchaseJustCompleted
+                ? 'Your payment went through. Tap below when you are ready to join the live stream.'
+                : 'Your access is saved to your account. Tap below to join the live stream.'}
+            </p>
 
-            <div className="grid gap-4 lg:grid-cols-[1fr_340px] lg:items-start lg:gap-6">
-              <div className="space-y-4">
-                <StreamPlayer src={streamUrl} />
-                <p className="text-center text-xs text-gray-500 sm:text-sm">
-                  Rotate your phone to landscape for fullscreen
-                </p>
+            {session?.user.email && (
+              <p className="mb-6 text-sm text-gray-500">Signed in as {session.user.email}</p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleWatchStream}
+              disabled={busy}
+              className="w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition active:scale-[0.985] disabled:opacity-60 sm:py-8 sm:text-2xl"
+            >
+              {busy ? 'Loading stream…' : 'Watch live stream'}
+            </button>
+          </div>
+        )}
+
+        {view === 'stream' && isLoggedIn && streamUrl && session && (
+          <div
+            ref={fullscreenRef}
+            className={
+              playerMode === 'fullscreen'
+                ? 'fixed inset-0 z-[100] flex h-[100dvh] flex-col bg-black pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]'
+                : 'space-y-3 sm:space-y-4'
+            }
+          >
+            {playerMode === 'fullscreen' ? (
+              <div className="flex shrink-0 items-center justify-between border-b border-red-600/40 bg-black/90 px-4 py-3">
+                <span className="text-sm font-black tracking-tight sm:text-lg">UFC ACCESS</span>
+                <button
+                  type="button"
+                  onClick={handleExitFullscreen}
+                  className="rounded-lg border border-white/20 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/10 sm:text-sm"
+                >
+                  Exit fullscreen
+                </button>
               </div>
-              <LiveChat session={session} />
+            ) : (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest text-red-500 sm:justify-start sm:gap-4 sm:text-sm">
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-red-500 sm:h-3 sm:w-3" />
+                  Live broadcast in progress
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleBackToHome}
+                    className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-medium text-gray-300 transition hover:border-red-500 sm:text-sm"
+                  >
+                    Back to home
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleEnterFullscreen}
+                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-black sm:text-sm"
+                  >
+                    Fullscreen
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div
+              className={
+                playerMode === 'fullscreen'
+                  ? 'min-h-0 flex-1'
+                  : 'flex flex-col gap-4 landscape:flex-row landscape:items-stretch lg:grid lg:grid-cols-[1fr_340px] lg:gap-6'
+              }
+            >
+              <div
+                className={
+                  playerMode === 'fullscreen' ? 'h-full min-h-0' : 'min-w-0 landscape:flex-[1.4]'
+                }
+              >
+                <StreamPlayer src={streamUrl} fill={playerMode === 'fullscreen'} />
+              </div>
+
+              {playerMode === 'normal' && (
+                <div className="min-h-0 landscape:flex-1 landscape:max-w-sm lg:max-w-none">
+                  <LiveChat session={session} />
+                </div>
+              )}
             </div>
           </div>
         )}

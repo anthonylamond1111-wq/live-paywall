@@ -124,7 +124,7 @@ export default function LiveChat({ session }: LiveChatProps) {
   };
 
   return (
-    <div className="flex h-80 flex-col overflow-hidden rounded-2xl border border-red-600/50 bg-zinc-900 sm:h-96 lg:h-[min(70vh,520px)] lg:min-h-[400px]">
+    <div className="flex h-72 min-h-[240px] flex-col overflow-hidden rounded-2xl border border-red-600/50 bg-zinc-900 landscape:h-[min(70dvh,100%)] landscape:min-h-[200px] sm:h-80 lg:h-[min(70vh,520px)] lg:min-h-[400px]">
       <div className="border-b border-zinc-800 px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />

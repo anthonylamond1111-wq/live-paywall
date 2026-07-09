@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { MuxPlayerRefAttributes } from '@mux/mux-player-react';
 
@@ -8,65 +8,21 @@ const MuxPlayer = dynamic(() => import('@mux/mux-player-react'), { ssr: false })
 
 type StreamPlayerProps = {
   src: string;
+  fill?: boolean;
 };
 
-function isMobileDevice() {
-  return window.matchMedia('(max-width: 768px)').matches;
-}
-
-function isLandscape() {
-  return window.matchMedia('(orientation: landscape)').matches;
-}
-
-async function enterFullscreen(el: HTMLElement) {
-  const anyEl = el as HTMLElement & {
-    webkitRequestFullscreen?: () => Promise<void>;
-    requestFullscreen?: () => Promise<void>;
-  };
-
-  try {
-    if (anyEl.requestFullscreen) {
-      await anyEl.requestFullscreen();
-    } else if (anyEl.webkitRequestFullscreen) {
-      await anyEl.webkitRequestFullscreen();
-    }
-  } catch {
-    // User gesture or browser policy may block fullscreen
-  }
-}
-
-export default function StreamPlayer({ src }: StreamPlayerProps) {
+export default function StreamPlayer({ src, fill = false }: StreamPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<MuxPlayerRefAttributes>(null);
-
-  useEffect(() => {
-    const syncFullscreen = () => {
-      if (!isMobileDevice() || !isLandscape()) return;
-
-      const playerEl =
-        (containerRef.current?.querySelector('mux-player') as HTMLElement | null) ??
-        (playerRef.current as unknown as HTMLElement | null);
-
-      if (playerEl) {
-        void enterFullscreen(playerEl);
-      }
-    };
-
-    const timer = window.setTimeout(syncFullscreen, 300);
-    window.addEventListener('orientationchange', syncFullscreen);
-    screen.orientation?.addEventListener('change', syncFullscreen);
-
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('orientationchange', syncFullscreen);
-      screen.orientation?.removeEventListener('change', syncFullscreen);
-    };
-  }, [src]);
 
   return (
     <div
       ref={containerRef}
-      className="w-full overflow-hidden rounded-2xl border-2 border-red-600 bg-black shadow-2xl sm:rounded-3xl sm:border-4 landscape:fixed landscape:inset-0 landscape:z-[100] landscape:rounded-none landscape:border-0"
+      className={`w-full overflow-hidden bg-black ${
+        fill
+          ? 'h-full min-h-0 rounded-none border-0'
+          : 'rounded-2xl border-2 border-red-600 shadow-2xl sm:rounded-3xl sm:border-4'
+      }`}
     >
       <MuxPlayer
         ref={playerRef}
@@ -75,8 +31,42 @@ export default function StreamPlayer({ src }: StreamPlayerProps) {
         autoPlay
         muted
         playsInline
-        className="h-full w-full aspect-video landscape:aspect-auto landscape:min-h-[100dvh]"
+        className={`h-full w-full ${fill ? 'min-h-0' : 'aspect-video'}`}
       />
     </div>
   );
+}
+
+export function useStreamFullscreen(containerRef: React.RefObject<HTMLElement | null>) {
+  const enter = async () => {
+    const el = containerRef.current;
+    if (!el) return false;
+
+    try {
+      if (el.requestFullscreen) {
+        await el.requestFullscreen();
+        return true;
+      }
+      const webkitEl = el as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
+      if (webkitEl.webkitRequestFullscreen) {
+        await webkitEl.webkitRequestFullscreen();
+        return true;
+      }
+    } catch {
+      // Fall back to CSS overlay mode in parent
+    }
+    return false;
+  };
+
+  const exit = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // Parent handles CSS overlay exit
+    }
+  };
+
+  return { enter, exit };
 }

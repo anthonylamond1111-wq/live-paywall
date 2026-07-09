@@ -4,6 +4,13 @@ import { getStripe } from '@/lib/stripe';
 
 export async function POST() {
   try {
+    if (!STRIPE_PRICE_ID) {
+      return NextResponse.json(
+        { error: 'STRIPE_PRICE_ID is not configured. Add your live Stripe price ID in Railway variables.' },
+        { status: 500 }
+      );
+    }
+
     const origin =
       process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
     const stripe = getStripe();

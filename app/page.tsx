@@ -149,7 +149,9 @@ export default function UFCAccess() {
               {busy ? 'Redirecting to Stripe…' : CHECKOUT_LABEL}
             </button>
 
-            <p className="text-xs text-gray-500">Secure checkout via Stripe • Stream hidden until paid</p>
+            <p className="text-xs text-gray-500">
+              Secure checkout via Stripe • Apple Pay & Google Pay accepted
+            </p>
           </div>
         )}
 

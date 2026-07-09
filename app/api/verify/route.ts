@@ -1,9 +1,18 @@
 import { NextResponse } from 'next/server';
-import { accessCookieOptions, hasPaidAccess } from '@/lib/access-cookie';
 import { getStripe } from '@/lib/stripe';
+import {
+  getUserFromRequest,
+  recordPurchase,
+  userHasAccess,
+} from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Please log in first' }, { status: 401 });
+    }
+
     const { sessionId } = (await request.json()) as { sessionId?: string };
     if (!sessionId) {
       return NextResponse.json({ error: 'Missing session' }, { status: 400 });
@@ -14,9 +23,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ paid: false });
     }
 
-    const response = NextResponse.json({ paid: true });
-    response.cookies.set(accessCookieOptions(sessionId));
-    return response;
+    const sessionUserId = session.metadata?.user_id ?? session.client_reference_id;
+    if (sessionUserId !== user.id) {
+      return NextResponse.json({ error: 'Payment does not match this account' }, { status: 403 });
+    }
+
+    await recordPurchase(user.id, session.id);
+    const paid = await userHasAccess(user.id);
+
+    return NextResponse.json({ paid });
   } catch (error) {
     console.error('Verify error:', error);
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 });

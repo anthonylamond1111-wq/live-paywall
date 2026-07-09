@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
+import { getUserFromRequest } from '@/lib/supabase/server';
 
 function isStripeTestMode() {
   return (process.env.STRIPE_SECRET_KEY ?? '').startsWith('sk_test_');
@@ -34,8 +35,13 @@ async function resolvePriceId(): Promise<string | null> {
   return fallbackPriceId ?? null;
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Please log in first' }, { status: 401 });
+    }
+
     const priceId = await resolvePriceId();
     if (!priceId) {
       return NextResponse.json(
@@ -54,6 +60,9 @@ export async function POST() {
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      customer_email: user.email,
+      client_reference_id: user.id,
+      metadata: { user_id: user.id },
       line_items: [{ quantity: 1, price: priceId }],
       success_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?canceled=1`,

@@ -4,5 +4,7 @@ export const STREAM_URL =
 
 export const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID ?? '';
 
+export const STRIPE_PRODUCT_ID = process.env.STRIPE_PRODUCT_ID ?? '';
+
 export const CHECKOUT_LABEL =
-  process.env.NEXT_PUBLIC_CHECKOUT_LABEL ?? 'Pay to Join Live';
+  process.env.NEXT_PUBLIC_CHECKOUT_LABEL ?? 'Pay £2 to Join Live';

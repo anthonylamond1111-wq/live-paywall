@@ -1,14 +1,27 @@
 import { NextResponse } from 'next/server';
-import { STRIPE_PRICE_ID, STRIPE_PRODUCT_ID } from '@/lib/constants';
+import { STRIPE_PRICE_ID } from '@/lib/constants';
 import { getStripe } from '@/lib/stripe';
+
+function isStripeTestMode() {
+  return (process.env.STRIPE_SECRET_KEY ?? '').startsWith('sk_test_');
+}
+
+function getProductIdForMode() {
+  if (isStripeTestMode()) {
+    return process.env.STRIPE_TEST_PRODUCT_ID ?? 'prod_Ur1ON2doXy6N8B';
+  }
+
+  return process.env.STRIPE_PRODUCT_ID ?? '';
+}
 
 async function resolvePriceId(): Promise<string | null> {
   if (STRIPE_PRICE_ID) return STRIPE_PRICE_ID;
 
-  if (!STRIPE_PRODUCT_ID) return null;
+  const productId = getProductIdForMode();
+  if (!productId) return null;
 
   const stripe = getStripe();
-  const product = await stripe.products.retrieve(STRIPE_PRODUCT_ID);
+  const product = await stripe.products.retrieve(productId);
 
   if (!product.default_price) return null;
 
@@ -23,8 +36,9 @@ export async function POST() {
     if (!priceId) {
       return NextResponse.json(
         {
-          error:
-            'Stripe product not configured. Set STRIPE_PRODUCT_ID or STRIPE_PRICE_ID in Railway variables.',
+          error: isStripeTestMode()
+            ? 'Stripe test product not configured. Set STRIPE_TEST_PRODUCT_ID in Railway.'
+            : 'Stripe live product not configured. Set STRIPE_PRODUCT_ID in Railway.',
         },
         { status: 500 }
       );
@@ -48,6 +62,8 @@ export async function POST() {
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error('Checkout error:', error);
-    return NextResponse.json({ error: 'Checkout failed' }, { status: 500 });
+    const message =
+      error instanceof Error ? error.message : 'Checkout failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

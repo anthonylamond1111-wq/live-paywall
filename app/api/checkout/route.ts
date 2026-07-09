@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { STRIPE_PRICE_ID } from '@/lib/constants';
 import { getStripe } from '@/lib/stripe';
 
 function isStripeTestMode() {
@@ -11,23 +10,28 @@ function getProductIdForMode() {
     return process.env.STRIPE_TEST_PRODUCT_ID ?? 'prod_Ur1ON2doXy6N8B';
   }
 
-  return process.env.STRIPE_PRODUCT_ID ?? '';
+  return process.env.STRIPE_PRODUCT_ID ?? 'prod_Ur1s5kDE1mccbJ';
 }
 
 async function resolvePriceId(): Promise<string | null> {
-  if (STRIPE_PRICE_ID) return STRIPE_PRICE_ID;
-
   const productId = getProductIdForMode();
-  if (!productId) return null;
 
-  const stripe = getStripe();
-  const product = await stripe.products.retrieve(productId);
+  if (productId) {
+    const stripe = getStripe();
+    const product = await stripe.products.retrieve(productId);
 
-  if (!product.default_price) return null;
+    if (product.default_price) {
+      return typeof product.default_price === 'string'
+        ? product.default_price
+        : product.default_price.id;
+    }
+  }
 
-  return typeof product.default_price === 'string'
-    ? product.default_price
-    : product.default_price.id;
+  const fallbackPriceId = isStripeTestMode()
+    ? process.env.STRIPE_TEST_PRICE_ID
+    : process.env.STRIPE_LIVE_PRICE_ID;
+
+  return fallbackPriceId ?? null;
 }
 
 export async function POST() {

@@ -31,7 +31,7 @@ export default function UFCAccess() {
     try {
       const supabase = getSupabaseClient();
       if (!supabase) {
-        alert('Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel → Settings → Environment Variables, then redeploy.');
+        alert('Supabase is not configured. In Railway → your service → Variables, add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY, then redeploy.');
         return;
       }
 
@@ -45,7 +45,7 @@ export default function UFCAccess() {
         else alert('Check your email for confirmation!');
       }
     } catch {
-      alert('Could not reach Supabase. Check your environment variables in Vercel and try again.');
+      alert('Could not reach Supabase. Check your environment variables in Railway and redeploy.');
     }
   };
 

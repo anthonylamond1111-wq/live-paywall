@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { EVENT, getEventCountdown } from '@/lib/event';
 import JourneyProgress from '@/components/JourneyProgress';
 
@@ -70,16 +69,14 @@ export default function FightNightLanding({
 }: FightNightLandingProps) {
   return (
     <section className="relative -mx-4 mb-8 min-h-[min(92vh,900px)] overflow-hidden rounded-2xl border border-red-600/40 sm:-mx-6 sm:mb-10 sm:rounded-3xl">
-      <div className="absolute inset-0 bg-black">
-        <Image
-          src={HERO_IMAGE}
-          alt="UFC Access Night — McGregor vs Holloway"
-          fill
-          priority
-          className="hero-octagon-image object-cover object-center"
-          sizes="100vw"
-        />
-      </div>
+      {/* Native img — loads immediately, no Next image optimizer dependency */}
+      <img
+        src={HERO_IMAGE}
+        alt=""
+        fetchPriority="high"
+        decoding="async"
+        className="hero-octagon-image absolute inset-0 h-full w-full object-cover object-center"
+      />
 
       <div className="hero-octagon-vignette absolute inset-0" aria-hidden />
 

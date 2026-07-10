@@ -5,7 +5,6 @@ import type { Session } from '@supabase/supabase-js';
 import AddToHomeScreen from '@/components/AddToHomeScreen';
 import BrandIntro from '@/components/BrandIntro';
 import BrandLogo from '@/components/BrandLogo';
-import EventBanner from '@/components/EventBanner';
 import EventCountdown from '@/components/EventCountdown';
 import FAQ from '@/components/FAQ';
 import FighterHero from '@/components/FighterHero';

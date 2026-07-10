@@ -2,9 +2,7 @@
 
 import { useEffect } from 'react';
 import { fireConfetti } from '@/lib/confetti';
-import { downloadEventCalendar, getGoogleCalendarUrl } from '@/lib/calendar';
 import { EVENT } from '@/lib/event';
-import ShareButton from '@/components/ShareButton';
 
 type SuccessScreenProps = {
   email?: string | null;
@@ -42,42 +40,20 @@ export default function SuccessScreen({
       </h2>
 
       <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-4 text-left sm:mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-red-400">{EVENT.number}</p>
-        <p className="mt-1 text-lg font-bold">
-          {EVENT.fighter1} vs {EVENT.fighter2}
-        </p>
+        <p className="text-lg font-bold">{EVENT.number}</p>
         <p className="mt-1 text-sm text-gray-400">{EVENT.streamStartLabel}</p>
         <p className="mt-1 text-xs text-gray-600">{EVENT.venue}</p>
       </div>
 
       <p className="mb-4 text-sm text-gray-400">
         {purchaseJustCompleted
-          ? 'Your ticket is saved to your account. Add the event to your calendar, then join when you\'re ready.'
+          ? 'Your ticket is saved to your account. Join when you\'re ready.'
           : 'Your access is saved. Tap below to join the live stream.'}
       </p>
 
       <p className="mb-6 text-xs text-gray-600">{EVENT.replayMessage}</p>
 
-      {email && <p className="mb-4 text-sm text-gray-500">Signed in as {email}</p>}
-
-      <div className="mb-4 flex flex-wrap justify-center gap-2">
-        <button
-          type="button"
-          onClick={downloadEventCalendar}
-          className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-gray-300 transition hover:border-red-500"
-        >
-          Add to calendar (.ics)
-        </button>
-        <a
-          href={getGoogleCalendarUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-gray-300 transition hover:border-red-500"
-        >
-          Google Calendar
-        </a>
-        <ShareButton />
-      </div>
+      {email && <p className="mb-6 text-sm text-gray-500">Signed in as {email}</p>}
 
       <button
         type="button"

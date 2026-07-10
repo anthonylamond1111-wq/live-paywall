@@ -5,11 +5,9 @@ import type { Session } from '@supabase/supabase-js';
 import AddToHomeScreen from '@/components/AddToHomeScreen';
 import BrandIntro from '@/components/BrandIntro';
 import BrandLogo from '@/components/BrandLogo';
-import EventCountdown from '@/components/EventCountdown';
 import FAQ from '@/components/FAQ';
-import FighterHero from '@/components/FighterHero';
+import FightNightLanding from '@/components/FightNightLanding';
 import FreeVsPaid from '@/components/FreeVsPaid';
-import JourneyProgress from '@/components/JourneyProgress';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import NotifyWhenLive from '@/components/NotifyWhenLive';
 import PageBackground from '@/components/PageBackground';
@@ -269,8 +267,8 @@ export default function UFCAccess() {
   };
 
   const isLoggedIn = !!session;
-  const showEvent = isLoggedIn && (view === 'pay' || view === 'success');
   const showAuthGate = !isLoggedIn || view === 'auth';
+  const showHero = showAuthGate || view === 'pay' || view === 'success';
   const showFooter = view !== 'stream';
 
   const journeyStep =
@@ -321,16 +319,18 @@ export default function UFCAccess() {
       </nav>
 
       <main
-        className={`relative mx-auto max-w-5xl px-4 sm:px-6 ${
-          view === 'stream' ? 'max-w-6xl pb-6 pt-24 sm:pt-28' : 'pb-10 pt-24 sm:pb-20 sm:pt-28'
+        className={`relative mx-auto px-4 sm:px-6 ${
+          showAuthGate
+            ? 'max-w-6xl pb-10 pt-24 sm:pb-20 sm:pt-28'
+            : view === 'stream'
+              ? 'max-w-6xl pb-6 pt-24 sm:pt-28'
+              : 'max-w-5xl pb-10 pt-24 sm:pb-20 sm:pt-28'
         }`}
       >
-        {showEvent && <FighterHero compact />}
-        {(showAuthGate || view === 'pay' || view === 'success') && (
-          <JourneyProgress current={journeyStep} />
+        {showHero && (
+          <FightNightLanding journeyStep={journeyStep} hideSignupCta={!showAuthGate} />
         )}
 
-        {(showAuthGate || view === 'pay') && <EventCountdown />}
         {showAuthGate && <NotifyWhenLive />}
 
         {view === 'loading' && isLoggedIn && <LoadingSkeleton />}
@@ -340,7 +340,10 @@ export default function UFCAccess() {
             <PreviewStream />
             <FreeVsPaid />
 
-            <div className="rounded-2xl border border-red-600/50 bg-zinc-900/90 p-6 shadow-lg shadow-red-900/5 sm:rounded-3xl sm:p-10">
+            <div
+              id="signup"
+              className="scroll-mt-28 rounded-2xl border border-red-600/50 bg-zinc-900/90 p-6 shadow-lg shadow-red-900/5 sm:rounded-3xl sm:p-10"
+            >
               <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
                 {authMode === 'login' ? 'Log in' : 'Create your account'}
               </h2>

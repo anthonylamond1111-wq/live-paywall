@@ -140,3 +140,19 @@ body {
 .fight-hero-vs {
   animation: hero-vs-pulse 2.5s ease-in-out infinite;
 }
+
+/* Octagon hero — image is already on-brand; light vignette for card readability */
+.hero-octagon-image {
+  filter: contrast(1.05) brightness(0.95);
+}
+
+.hero-octagon-vignette {
+  background:
+    radial-gradient(ellipse 55% 50% at 50% 52%, rgba(0, 0, 0, 0.15) 0%, transparent 70%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, transparent 18%, transparent 85%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+.hero-journey-bar {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+}

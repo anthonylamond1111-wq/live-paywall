@@ -9,13 +9,14 @@ const STEPS: { id: JourneyStep; label: string }[] = [
 
 type JourneyProgressProps = {
   current: JourneyStep;
+  onDark?: boolean;
 };
 
 function stepIndex(step: JourneyStep) {
   return STEPS.findIndex((s) => s.id === step);
 }
 
-export default function JourneyProgress({ current }: JourneyProgressProps) {
+export default function JourneyProgress({ current, onDark = false }: JourneyProgressProps) {
   const currentIdx = stepIndex(current);
 
   return (
@@ -30,7 +31,9 @@ export default function JourneyProgress({ current }: JourneyProgressProps) {
               <div className="flex w-full items-center">
                 {index > 0 && (
                   <div
-                    className={`h-0.5 flex-1 ${done || active ? 'bg-red-500' : 'bg-zinc-800'}`}
+                    className={`h-0.5 flex-1 ${
+                      done || active ? 'bg-red-500' : onDark ? 'bg-white/15' : 'bg-zinc-800'
+                    }`}
                   />
                 )}
                 <div
@@ -39,20 +42,30 @@ export default function JourneyProgress({ current }: JourneyProgressProps) {
                       ? 'bg-red-500 text-white'
                       : active
                         ? 'border-2 border-red-500 bg-red-500/10 text-red-400'
-                        : 'border border-zinc-700 bg-zinc-900 text-gray-600'
+                        : onDark
+                          ? 'border border-white/20 bg-black/40 text-gray-400'
+                          : 'border border-zinc-700 bg-zinc-900 text-gray-600'
                   }`}
                 >
                   {done ? '✓' : index + 1}
                 </div>
                 {index < STEPS.length - 1 && (
                   <div
-                    className={`h-0.5 flex-1 ${done ? 'bg-red-500' : 'bg-zinc-800'}`}
+                    className={`h-0.5 flex-1 ${done ? 'bg-red-500' : onDark ? 'bg-white/15' : 'bg-zinc-800'}`}
                   />
                 )}
               </div>
               <span
                 className={`mt-2 text-[10px] uppercase tracking-wider sm:text-xs ${
-                  active ? 'text-red-400' : done ? 'text-gray-400' : 'text-gray-600'
+                  active
+                    ? 'text-red-400'
+                    : done
+                      ? onDark
+                        ? 'text-gray-300'
+                        : 'text-gray-400'
+                      : onDark
+                        ? 'text-gray-500'
+                        : 'text-gray-600'
                 }`}
               >
                 {step.label}

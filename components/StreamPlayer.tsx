@@ -36,11 +36,15 @@ export default function StreamPlayer({ src, fill = false }: StreamPlayerProps) {
       hls.loadSource(src);
       hls.attachMedia(video);
 
-      hls.on(Hls.Events.MANIFEST_PARSED, startPlayback);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setError('');
+        startPlayback();
+      });
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (!data.fatal) return;
 
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          setError('Reconnecting to live stream…');
           hls?.startLoad();
           return;
         }
@@ -50,7 +54,9 @@ export default function StreamPlayer({ src, fill = false }: StreamPlayerProps) {
           return;
         }
 
-        setError('Stream could not load. Check OBS is live and try refreshing.');
+        setError(
+          'Stream offline — make sure OBS is streaming to Livepeer, then refresh this page.'
+        );
         hls?.destroy();
       });
 

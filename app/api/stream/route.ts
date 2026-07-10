@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { STREAM_URL } from '@/lib/constants';
+import { PLAYER_STREAM_URL } from '@/lib/constants';
 import {
   getTokenFromRequest,
   getUserFromRequest,
@@ -18,5 +18,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Payment required' }, { status: 402 });
   }
 
-  return NextResponse.json({ url: STREAM_URL });
+  return NextResponse.json({ url: PLAYER_STREAM_URL });
 }

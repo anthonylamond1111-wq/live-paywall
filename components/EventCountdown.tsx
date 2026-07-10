@@ -20,18 +20,21 @@ export default function EventCountdown() {
   if (!countdown.isBeforeEvent) return null;
 
   return (
-    <div className="mb-6 rounded-2xl border border-red-600/30 bg-zinc-900/80 px-4 py-4 text-center sm:mb-8 sm:px-6 sm:py-5">
+    <div className="mb-6 text-center sm:mb-8">
       <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-red-400 sm:text-xs">
         Stream starts in
       </p>
-      <div className="mt-3 flex items-center justify-center gap-2 sm:gap-4">
+      <div className="mt-3 flex items-end justify-center gap-3 sm:gap-5">
         {countdown.days > 0 && (
-          <TimeBlock label="Days" value={pad(countdown.days)} />
+          <>
+            <TimeBlock label="Days" value={pad(countdown.days)} />
+            <span className="mb-5 text-xl font-light text-red-500/40 sm:text-2xl">:</span>
+          </>
         )}
         <TimeBlock label="Hrs" value={pad(countdown.hours)} />
-        <span className="text-xl text-red-500/60">:</span>
+        <span className="mb-5 text-xl font-light text-red-500/40 sm:text-2xl">:</span>
         <TimeBlock label="Min" value={pad(countdown.minutes)} />
-        <span className="text-xl text-red-500/60">:</span>
+        <span className="mb-5 text-xl font-light text-red-500/40 sm:text-2xl">:</span>
         <TimeBlock label="Sec" value={pad(countdown.seconds)} />
       </div>
       <p className="mt-3 text-xs text-gray-500">
@@ -48,9 +51,9 @@ export default function EventCountdown() {
 
 function TimeBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-[52px] rounded-xl border border-zinc-800 bg-black/50 px-2 py-2 sm:min-w-[64px] sm:px-3 sm:py-3">
-      <div className="font-mono text-2xl font-bold text-white sm:text-3xl">{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+    <div className="min-w-[44px] sm:min-w-[52px]">
+      <div className="font-mono text-3xl font-bold tabular-nums text-white sm:text-4xl">{value}</div>
+      <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-gray-500">{label}</div>
     </div>
   );
 }

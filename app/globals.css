@@ -83,3 +83,32 @@ body {
 .brand-intro-tag {
   animation: brand-intro-fade 2.2s ease forwards;
 }
+
+@keyframes brand-flow {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.brand-logo-flow {
+  background: linear-gradient(
+    110deg,
+    #ffffff 0%,
+    #ffffff 22%,
+    #fca5a5 38%,
+    #ef4444 48%,
+    #dc2626 52%,
+    #ef4444 62%,
+    #ffffff 78%,
+    #ffffff 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: brand-flow 5s linear infinite;
+}

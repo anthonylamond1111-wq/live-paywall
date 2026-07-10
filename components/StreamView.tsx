@@ -7,7 +7,7 @@ import LiveChat from '@/components/LiveChat';
 import EventBanner from '@/components/EventBanner';
 import FightInfo from '@/components/FightInfo';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
-import ViewerCount from '@/components/ViewerCount';
+import BrandLogo from '@/components/BrandLogo';
 
 type PlayerMode = 'normal' | 'theatre' | 'fullscreen';
 type MobileTab = 'watch' | 'chat';
@@ -137,7 +137,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
 
       {isFullscreen && (
         <div className="flex shrink-0 items-center justify-between border-b border-red-600/40 bg-black/90 px-4 py-3">
-          <span className="text-sm font-black tracking-tight sm:text-lg">UFC ACCESS</span>
+          <BrandLogo size="fullscreen" />
           <button
             type="button"
             onClick={handleExitFullscreen}

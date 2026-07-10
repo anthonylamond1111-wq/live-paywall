@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import AddToHomeScreen from '@/components/AddToHomeScreen';
-import BrandIntro from '@/components/BrandIntro';
+import BrandLogo from '@/components/BrandLogo';
 import EventBanner from '@/components/EventBanner';
 import EventCountdown from '@/components/EventCountdown';
 import PageBackground from '@/components/PageBackground';
@@ -254,9 +254,7 @@ export default function UFCAccess() {
 
       <nav className="fixed top-0 z-50 w-full border-b border-red-600/80 bg-black/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-8 sm:py-5">
-          <div className="text-xl font-black tracking-tight sm:text-4xl sm:tracking-[-2px]">
-            UFC <span className="text-red-500">ACCESS</span>
-          </div>
+          <BrandLogo />
           <div className="flex items-center gap-3 sm:gap-6">
             {isLoggedIn && view === 'stream' && (
               <div className="live-badge hidden items-center gap-2 sm:flex">

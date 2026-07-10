@@ -1,4 +1,4 @@
-'use client';
+import BrandLogo from '@/components/BrandLogo';
 
 import { useEffect, useState } from 'react';
 
@@ -21,10 +21,7 @@ export default function BrandIntro() {
   return (
     <div className="brand-intro fixed inset-0 z-[200] flex items-center justify-center bg-black">
       <div className="text-center">
-        <div className="brand-intro-logo text-4xl font-black tracking-tight text-white sm:text-6xl">
-          UFC
-          <span className="text-red-500"> ACCESS</span>
-        </div>
+        <BrandLogo size="intro" className="brand-intro-logo" />
         <div className="brand-intro-line mx-auto mt-4 h-0.5 w-24 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
         <p className="brand-intro-tag mt-4 text-xs uppercase tracking-[0.4em] text-gray-500">
           Live stream

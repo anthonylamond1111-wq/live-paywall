@@ -14,12 +14,15 @@ type FightNightLandingProps = {
 const HERO_MOBILE =
   process.env.NEXT_PUBLIC_HERO_IMAGE_MOBILE ??
   process.env.NEXT_PUBLIC_HERO_IMAGE ??
-  '/fighters/hero-mobile.png';
+  '/fighters/hero-mobile.webp';
 
 const HERO_DESKTOP =
   process.env.NEXT_PUBLIC_HERO_IMAGE_DESKTOP ??
   process.env.NEXT_PUBLIC_HERO_IMAGE ??
-  '/fighters/hero-desktop.png';
+  '/fighters/hero-desktop.webp';
+
+const HERO_MOBILE_FALLBACK = '/fighters/hero-mobile@2x.png';
+const HERO_DESKTOP_FALLBACK = '/fighters/hero-desktop@2x.png';
 
 const heroImgClass =
   'hero-octagon-image absolute inset-0 h-full w-full object-cover';
@@ -27,20 +30,30 @@ const heroImgClass =
 function HeroBackground() {
   return (
     <>
-      <img
-        src={HERO_MOBILE}
-        alt=""
-        fetchPriority="high"
-        decoding="async"
-        className={`${heroImgClass} object-[center_20%] md:hidden`}
-      />
-      <img
-        src={HERO_DESKTOP}
-        alt=""
-        fetchPriority="high"
-        decoding="async"
-        className={`${heroImgClass} hidden object-center md:block`}
-      />
+      <picture className="absolute inset-0 md:hidden">
+        <source srcSet={HERO_MOBILE} type="image/webp" />
+        <img
+          src={HERO_MOBILE_FALLBACK}
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+          width={1644}
+          height={2048}
+          className={`${heroImgClass} object-[center_20%]`}
+        />
+      </picture>
+      <picture className="absolute inset-0 hidden md:block">
+        <source srcSet={HERO_DESKTOP} type="image/webp" />
+        <img
+          src={HERO_DESKTOP_FALLBACK}
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+          width={2560}
+          height={838}
+          className={`${heroImgClass} object-center`}
+        />
+      </picture>
     </>
   );
 }

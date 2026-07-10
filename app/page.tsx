@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import StreamPlayer, { useStreamFullscreen } from '@/components/StreamPlayer';
 import LiveChat from '@/components/LiveChat';
+import PreviewStream from '@/components/PreviewStream';
 import { CHECKOUT_LABEL } from '@/lib/constants';
 import { getSupabaseClient } from '@/lib/supabase/client';
 
@@ -308,7 +309,7 @@ export default function UFCAccess() {
 
       <main
         className={`relative mx-auto max-w-5xl px-4 pb-10 sm:px-6 sm:pb-20 ${
-          showAuthGate ? 'flex min-h-[100dvh] items-center pt-20' : 'pt-24 sm:pt-32'
+          showAuthGate ? 'pt-24 sm:pt-28' : 'pt-24 sm:pt-32'
         }`}
       >
         {showEvent && (
@@ -330,13 +331,16 @@ export default function UFCAccess() {
         )}
 
         {showAuthGate && (
-          <div className="mx-auto w-full max-w-md rounded-2xl border border-red-600/50 bg-zinc-900 p-6 sm:rounded-3xl sm:p-10">
+          <div className="mx-auto w-full max-w-2xl space-y-6">
+            <PreviewStream />
+
+            <div className="rounded-2xl border border-red-600/50 bg-zinc-900 p-6 sm:rounded-3xl sm:p-10">
             <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
               {authMode === 'login' ? 'Log in' : 'Create your account'}
             </h2>
             <p className="mb-6 text-center text-sm text-gray-400">
-              Create an account to access tonight&apos;s live stream. Your purchase is saved to
-              your account so you can come back anytime.
+              Create an account to watch the official stream after your free preview. Your
+              purchase is saved to your account so you can come back anytime.
             </p>
 
             {message && <p className="mb-4 text-center text-sm text-red-400">{message}</p>}
@@ -388,6 +392,7 @@ export default function UFCAccess() {
                 ? 'Need an account? Sign up'
                 : 'Already have an account? Log in'}
             </button>
+            </div>
           </div>
         )}
 

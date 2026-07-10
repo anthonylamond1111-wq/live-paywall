@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import AddToHomeScreen from '@/components/AddToHomeScreen';
+import BrandIntro from '@/components/BrandIntro';
 import BrandLogo from '@/components/BrandLogo';
 import EventBanner from '@/components/EventBanner';
 import EventCountdown from '@/components/EventCountdown';

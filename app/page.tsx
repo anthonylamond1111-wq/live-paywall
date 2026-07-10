@@ -7,11 +7,18 @@ import BrandIntro from '@/components/BrandIntro';
 import BrandLogo from '@/components/BrandLogo';
 import EventBanner from '@/components/EventBanner';
 import EventCountdown from '@/components/EventCountdown';
+import FAQ from '@/components/FAQ';
+import FighterHero from '@/components/FighterHero';
+import FreeVsPaid from '@/components/FreeVsPaid';
+import JourneyProgress from '@/components/JourneyProgress';
+import LoadingSkeleton from '@/components/LoadingSkeleton';
+import NotifyWhenLive from '@/components/NotifyWhenLive';
 import PageBackground from '@/components/PageBackground';
 import PaywallCard from '@/components/PaywallCard';
 import PreviewStream from '@/components/PreviewStream';
 import SiteFooter from '@/components/SiteFooter';
 import StreamView from '@/components/StreamView';
+import SuccessScreen from '@/components/SuccessScreen';
 import { getSupabaseClient } from '@/lib/supabase/client';
 
 type View = 'loading' | 'auth' | 'pay' | 'success' | 'stream';
@@ -237,6 +244,26 @@ export default function UFCAccess() {
     setMessage('');
   };
 
+  const handleForgotPassword = async () => {
+    const supabase = getSupabaseClient();
+    if (!supabase || !email.trim()) {
+      setMessage('Enter your email above, then tap forgot password.');
+      return;
+    }
+
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/`,
+    });
+    setBusy(false);
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setMessage('Password reset email sent — check your inbox.');
+    }
+  };
+
   const handleBackToHome = () => {
     setStreamUrl(null);
     setView('success');
@@ -246,6 +273,17 @@ export default function UFCAccess() {
   const showEvent = isLoggedIn && (view === 'pay' || view === 'success');
   const showAuthGate = !isLoggedIn || view === 'auth';
   const showFooter = view !== 'stream';
+
+  const journeyStep =
+    view === 'stream'
+      ? ('watch' as const)
+      : view === 'pay'
+        ? ('pay' as const)
+        : view === 'success'
+          ? ('pay' as const)
+          : isLoggedIn
+            ? ('account' as const)
+            : ('preview' as const);
 
   return (
     <div className="relative min-h-[100dvh] bg-black text-white">
@@ -289,18 +327,20 @@ export default function UFCAccess() {
         }`}
       >
         {showEvent && <EventBanner />}
-        {(showAuthGate || view === 'pay') && <EventCountdown />}
-
-        {view === 'loading' && isLoggedIn && (
-          <div className="flex flex-col items-center gap-3 py-12">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
-            <p className="text-gray-400">Loading your access…</p>
-          </div>
+        {(showAuthGate || view === 'pay' || view === 'success') && (
+          <JourneyProgress current={journeyStep} />
         )}
+
+        {showAuthGate && <FighterHero />}
+        {(showAuthGate || view === 'pay') && <EventCountdown />}
+        {showAuthGate && <NotifyWhenLive />}
+
+        {view === 'loading' && isLoggedIn && <LoadingSkeleton />}
 
         {showAuthGate && (
           <div className="mx-auto w-full max-w-2xl space-y-6">
             <PreviewStream />
+            <FreeVsPaid />
 
             <div className="rounded-2xl border border-red-600/50 bg-zinc-900/90 p-6 shadow-lg shadow-red-900/5 sm:rounded-3xl sm:p-10">
               <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
@@ -360,48 +400,44 @@ export default function UFCAccess() {
                   ? 'Need an account? Sign up'
                   : 'Already have an account? Log in'}
               </button>
+
+              {authMode === 'login' && (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={busy}
+                  className="mt-2 w-full text-sm text-gray-500 underline transition hover:text-red-400"
+                >
+                  Forgot password?
+                </button>
+              )}
             </div>
+
+            <FAQ />
           </div>
         )}
 
         {view === 'pay' && isLoggedIn && (
-          <PaywallCard
-            email={session?.user.email}
-            message={message}
-            busy={busy}
-            onCheckout={handleCheckout}
-          />
+          <>
+            <PaywallCard
+              email={session?.user.email}
+              message={message}
+              busy={busy}
+              onCheckout={handleCheckout}
+            />
+            <div className="mx-auto mt-8 max-w-md">
+              <FAQ />
+            </div>
+          </>
         )}
 
         {view === 'success' && isLoggedIn && (
-          <div className="mx-auto max-w-md text-center">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-green-500/30 bg-green-500/10 sm:mb-8 sm:h-20 sm:w-20">
-              <svg className="h-10 w-10 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="mb-3 text-2xl font-bold text-green-400 sm:mb-4 sm:text-4xl">
-              {purchaseJustCompleted ? 'Purchase successful!' : "You're cleared to watch"}
-            </h2>
-            <p className="mb-8 text-sm text-gray-400 sm:mb-10 sm:text-base">
-              {purchaseJustCompleted
-                ? 'Your payment went through. Tap below when you are ready to join the live stream.'
-                : 'Your access is saved to your account. Tap below to join the live stream.'}
-            </p>
-
-            {session?.user.email && (
-              <p className="mb-6 text-sm text-gray-500">Signed in as {session.user.email}</p>
-            )}
-
-            <button
-              type="button"
-              onClick={handleWatchStream}
-              disabled={busy}
-              className="w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60 sm:py-8 sm:text-2xl"
-            >
-              {busy ? 'Loading stream…' : 'Watch live stream'}
-            </button>
-          </div>
+          <SuccessScreen
+            email={session?.user.email}
+            purchaseJustCompleted={purchaseJustCompleted}
+            busy={busy}
+            onWatch={handleWatchStream}
+          />
         )}
 
         {view === 'stream' && isLoggedIn && streamUrl && session && (

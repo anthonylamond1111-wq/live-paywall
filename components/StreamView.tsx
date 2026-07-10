@@ -9,6 +9,11 @@ import FightInfo from '@/components/FightInfo';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import BrandLogo from '@/components/BrandLogo';
 import ViewerCount from '@/components/ViewerCount';
+import TaleOfTheTape from '@/components/TaleOfTheTape';
+import CastToTvHelp from '@/components/CastToTvHelp';
+import StreamHealth, { type StreamHealthStatus } from '@/components/StreamHealth';
+import LiveUpdateBanner from '@/components/LiveUpdateBanner';
+import ShareButton from '@/components/ShareButton';
 
 type PlayerMode = 'normal' | 'theatre' | 'fullscreen';
 type MobileTab = 'watch' | 'chat';
@@ -24,6 +29,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
   const [mobileTab, setMobileTab] = useState<MobileTab>('watch');
   const [viewerCount, setViewerCount] = useState(1);
   const [isLive, setIsLive] = useState(false);
+  const [health, setHealth] = useState<StreamHealthStatus>('offline');
   const { isBeforeStart } = useStreamSchedule();
   const fullscreenRef = useRef<HTMLDivElement>(null);
   const { enter: enterNativeFullscreen, exit: exitNativeFullscreen } =
@@ -83,6 +89,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
     >
       {!isFullscreen && (
         <>
+          <LiveUpdateBanner />
           <EventBanner compact showLive={isLive} />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
@@ -103,9 +110,12 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
                 {statusLabel}
               </div>
               {isLive && <ViewerCount session={session} onCountChange={setViewerCount} />}
+              {isLive && <StreamHealth status={health} />}
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2">
+              <ShareButton />
+              <CastToTvHelp />
               <button
                 type="button"
                 onClick={onBackToHome}
@@ -174,6 +184,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
               src={streamUrl}
               fill={isFullscreen}
               onLiveChange={setIsLive}
+              onHealthChange={setHealth}
               onRequestFullscreen={isFullscreen ? undefined : handleEnterFullscreen}
             />
           )}
@@ -207,6 +218,8 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
 
       {!isFullscreen && (
         <>
+          <TaleOfTheTape />
+
           <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-800 bg-black/95 backdrop-blur-md lg:hidden">
             <div className="flex">
               <button

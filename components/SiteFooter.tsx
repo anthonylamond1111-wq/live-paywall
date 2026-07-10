@@ -9,10 +9,7 @@ export default function SiteFooter() {
         UFC ACCESS
       </p>
       <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-gray-500">
-        <a
-          href={`mailto:${EVENT.supportEmail}`}
-          className="transition hover:text-red-400"
-        >
+        <a href="/support" className="transition hover:text-red-400">
           Support
         </a>
         <a href="/terms" className="transition hover:text-red-400">

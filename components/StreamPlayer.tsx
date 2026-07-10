@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { hasStreamStarted } from '@/lib/event';
+import type { StreamHealthStatus } from '@/components/StreamHealth';
 
 type QualityLevel = {
   index: number;
@@ -14,9 +15,10 @@ type StreamPlayerProps = {
   fill?: boolean;
   onRequestFullscreen?: () => void;
   onLiveChange?: (live: boolean) => void;
+  onHealthChange?: (status: StreamHealthStatus) => void;
 };
 
-export default function StreamPlayer({ src, fill = false, onRequestFullscreen, onLiveChange }: StreamPlayerProps) {
+export default function StreamPlayer({ src, fill = false, onRequestFullscreen, onLiveChange, onHealthChange }: StreamPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,6 +56,7 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
     setError('');
     setErrorTitle('Stream unavailable');
     onLiveChange?.(false);
+    onHealthChange?.('offline');
     setShowUnmute(true);
     setMuted(true);
     video.muted = true;
@@ -78,6 +81,7 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
       hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
         setError('');
         onLiveChange?.(true);
+        onHealthChange?.('good');
         const qualityLevels: QualityLevel[] = data.levels.map((level, index) => ({
           index,
           label: level.height ? `${level.height}p` : `Level ${index + 1}`,
@@ -96,6 +100,7 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
 
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
           onLiveChange?.(false);
+          onHealthChange?.('buffering');
           setErrorTitle(hasStreamStarted() ? 'Broadcast not live yet' : 'Stream has not started yet');
           setError(
             hasStreamStarted()
@@ -112,6 +117,7 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
         }
 
         onLiveChange?.(false);
+        onHealthChange?.('offline');
         setErrorTitle('Broadcast not live yet');
         setError('The stream has not started. Refresh this page when the broadcast goes live.');
         hls?.destroy();
@@ -134,7 +140,7 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
     }
 
     setError('This browser does not support live stream playback.');
-  }, [src, onLiveChange]);
+  }, [src, onLiveChange, onHealthChange]);
 
   const handleUnmute = () => {
     const video = videoRef.current;
@@ -200,8 +206,13 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
         muted
         playsInline
         className={`h-full w-full bg-black ${fill ? 'min-h-0 object-contain' : 'aspect-video object-contain'}`}
-        onPlay={() => setPlaying(true)}
+        onPlay={() => {
+          setPlaying(true);
+          onHealthChange?.('good');
+        }}
         onPause={() => setPlaying(false)}
+        onWaiting={() => onHealthChange?.('buffering')}
+        onPlaying={() => onHealthChange?.('good')}
         onClick={togglePlay}
       />
 

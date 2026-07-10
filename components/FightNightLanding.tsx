@@ -21,8 +21,8 @@ const HERO_DESKTOP =
   process.env.NEXT_PUBLIC_HERO_IMAGE ??
   '/fighters/hero-desktop.webp';
 
-const HERO_MOBILE_FALLBACK = '/fighters/hero-mobile@2x.png';
-const HERO_DESKTOP_FALLBACK = '/fighters/hero-desktop@2x.png';
+const HERO_MOBILE_FALLBACK = '/fighters/hero-mobile.png';
+const HERO_DESKTOP_FALLBACK = '/fighters/hero-desktop.png';
 
 const heroImgClass =
   'hero-octagon-image absolute inset-0 h-full w-full object-cover';
@@ -37,8 +37,8 @@ function HeroBackground() {
           alt=""
           fetchPriority="high"
           decoding="async"
-          width={1644}
-          height={2048}
+          width={822}
+          height={1024}
           className={`${heroImgClass} object-[center_20%]`}
         />
       </picture>
@@ -49,8 +49,8 @@ function HeroBackground() {
           alt=""
           fetchPriority="high"
           decoding="async"
-          width={2560}
-          height={838}
+          width={1024}
+          height={335}
           className={`${heroImgClass} object-center`}
         />
       </picture>

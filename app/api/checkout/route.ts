@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import {
   STRIPE_CHECKOUT_BRANDING,
   STRIPE_CHECKOUT_CUSTOM_TEXT,
+  STRIPE_EXCLUDED_PAYMENT_METHODS,
+  STRIPE_WALLET_OPTIONS,
 } from '@/lib/stripe-checkout';
 import { getStripe } from '@/lib/stripe';
 import { getUserFromRequest } from '@/lib/supabase/server';
@@ -64,7 +66,8 @@ export async function POST(request: Request) {
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      payment_method_types: ['card'],
+      excluded_payment_method_types: [...STRIPE_EXCLUDED_PAYMENT_METHODS],
+      wallet_options: STRIPE_WALLET_OPTIONS,
       customer_email: user.email,
       client_reference_id: user.id,
       metadata: { user_id: user.id },

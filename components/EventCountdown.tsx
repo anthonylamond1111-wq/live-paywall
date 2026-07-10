@@ -22,7 +22,7 @@ export default function EventCountdown() {
   return (
     <div className="mb-6 rounded-2xl border border-red-600/30 bg-zinc-900/80 px-4 py-4 text-center sm:mb-8 sm:px-6 sm:py-5">
       <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-red-400 sm:text-xs">
-        Main card starts in
+        Stream starts in
       </p>
       <div className="mt-3 flex items-center justify-center gap-2 sm:gap-4">
         {countdown.days > 0 && (
@@ -35,8 +35,13 @@ export default function EventCountdown() {
         <TimeBlock label="Sec" value={pad(countdown.seconds)} />
       </div>
       <p className="mt-3 text-xs text-gray-500">
-        {EVENT.fighter1} vs {EVENT.fighter2} • {EVENT.venue}
+        {EVENT.streamStartLabel} • {EVENT.fighter1} vs {EVENT.fighter2}
       </p>
+      {countdown.totalHours < 48 && (
+        <p className="mt-1 text-[11px] text-gray-600">
+          About {countdown.totalHours} hour{countdown.totalHours === 1 ? '' : 's'} from now
+        </p>
+      )}
     </div>
   );
 }

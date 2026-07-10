@@ -10,9 +10,10 @@ export const EVENT = {
   fighter1: 'MCGREGOR',
   fighter2: 'HOLLOWAY',
   venue: 'T-Mobile Arena, Las Vegas',
-  /** ISO date for main card — override with NEXT_PUBLIC_EVENT_START_ISO on Railway */
-  mainCardStart:
-    process.env.NEXT_PUBLIC_EVENT_START_ISO ?? '2026-07-10T23:00:00.000Z',
+  /** Stream start — Saturday 10 PM UK (BST). Override with NEXT_PUBLIC_EVENT_START_ISO on Railway */
+  streamStart:
+    process.env.NEXT_PUBLIC_EVENT_START_ISO ?? '2026-07-11T21:00:00.000Z',
+  streamStartLabel: 'Saturday 10:00 PM (UK)',
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@ufcaccess.co.uk',
   fightCard: [
     { fighters: 'Conor McGregor vs Max Holloway', weight: 'Lightweight', main: true },
@@ -29,13 +30,15 @@ export const EVENT = {
 } as const;
 
 export function getEventCountdown() {
-  const target = new Date(EVENT.mainCardStart).getTime();
+  const target = new Date(EVENT.streamStart).getTime();
   const now = Date.now();
   const diff = Math.max(0, target - now);
+  const totalHours = Math.floor(diff / (1000 * 60 * 60));
 
   return {
     totalMs: diff,
     isBeforeEvent: diff > 0,
+    totalHours,
     days: Math.floor(diff / (1000 * 60 * 60 * 24)),
     hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
     minutes: Math.floor((diff / (1000 * 60)) % 60),

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { STREAM_URL } from '@/lib/constants';
+import { getStreamUrl } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +34,15 @@ function getProxyOrigin(request: Request): string {
   return new URL(request.url).origin;
 }
 
+function toAbsoluteUrl(uri: string, base: string) {
+  return uri.startsWith('http') ? uri : new URL(uri, base).toString();
+}
+
+function toProxyUrl(uri: string, base: string, origin: string) {
+  const absolute = toAbsoluteUrl(uri, base);
+  return `${origin}/api/hls/playlist?url=${encodeURIComponent(absolute)}`;
+}
+
 function rewritePlaylist(body: string, sourceUrl: string, origin: string) {
   const base = sourceUrl.substring(0, sourceUrl.lastIndexOf('/') + 1);
 
@@ -41,10 +50,16 @@ function rewritePlaylist(body: string, sourceUrl: string, origin: string) {
     .split('\n')
     .map((line) => {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) return line;
+      if (!trimmed) return line;
 
-      const absolute = trimmed.startsWith('http') ? trimmed : new URL(trimmed, base).toString();
-      return `${origin}/api/hls/playlist?url=${encodeURIComponent(absolute)}`;
+      if (trimmed.startsWith('#')) {
+        if (!trimmed.includes('URI="')) return line;
+        return line.replace(/URI="([^"]+)"/g, (_match, uri: string) => {
+          return `URI="${toProxyUrl(uri, base, origin)}"`;
+        });
+      }
+
+      return toProxyUrl(trimmed, base, origin);
     })
     .join('\n');
 }
@@ -52,7 +67,7 @@ function rewritePlaylist(body: string, sourceUrl: string, origin: string) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const origin = getProxyOrigin(request);
-  const target = searchParams.get('url') ?? STREAM_URL;
+  const target = searchParams.get('url') ?? getStreamUrl();
 
   if (!target) {
     return NextResponse.json(

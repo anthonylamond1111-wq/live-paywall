@@ -1,5 +1,5 @@
 /** HLS source URL — set STREAM_URL in Railway (Cloudflare, Mux, etc.) */
-function buildStreamUrl(): string {
+export function getStreamUrl(): string {
   if (process.env.STREAM_URL) {
     return process.env.STREAM_URL;
   }
@@ -11,8 +11,6 @@ function buildStreamUrl(): string {
 
   return '';
 }
-
-export const STREAM_URL = buildStreamUrl();
 
 /** Browser-facing URL — proxied through our API for reliable HLS playback */
 export const PLAYER_STREAM_URL = '/api/hls/playlist';

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { STREAM_URL } from '@/lib/constants';
+import { getStreamUrl } from '@/lib/constants';
+
+export const dynamic = 'force-dynamic';
 import {
   getTokenFromRequest,
   getUserFromRequest,
@@ -12,7 +14,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!STREAM_URL) {
+  const streamUrl = getStreamUrl();
+  if (!streamUrl) {
     return NextResponse.json({ error: 'Stream not configured' }, { status: 500 });
   }
 
@@ -22,5 +25,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Payment required' }, { status: 402 });
   }
 
-  return NextResponse.json({ url: STREAM_URL });
+  return NextResponse.json({ url: streamUrl });
 }

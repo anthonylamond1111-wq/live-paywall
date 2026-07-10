@@ -6,6 +6,8 @@ import {
   resolveUserAccess,
 } from '@/lib/supabase/server';
 import { chatDisplayName } from '@/lib/chat-display';
+import { isChatAdmin } from '@/lib/chat-admin';
+import { checkUserCanChat } from '@/lib/chat-moderation';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,10 +32,17 @@ export async function GET(request: Request) {
   const result = await requirePaidUser(request);
   if ('error' in result && result.error) return result.error;
 
+  const { user } = result;
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const supabase = getServiceSupabase();
   if (!supabase) {
     return NextResponse.json({ error: 'Chat not configured' }, { status: 503 });
   }
+
+  const block = await checkUserCanChat(supabase, user.id);
 
   const { data, error } = await supabase
     .from('chat_messages')
@@ -46,7 +55,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Could not load chat' }, { status: 500 });
   }
 
-  return NextResponse.json({ messages: data ?? [] });
+  return NextResponse.json({
+    messages: data ?? [],
+    isAdmin: isChatAdmin(user.email),
+    chatBlock: block.blocked ? block : null,
+  });
 }
 
 export async function POST(request: Request) {
@@ -73,6 +86,11 @@ export async function POST(request: Request) {
   const supabase = getServiceSupabase();
   if (!supabase) {
     return NextResponse.json({ error: 'Chat not configured' }, { status: 503 });
+  }
+
+  const block = await checkUserCanChat(supabase, user.id);
+  if (block.blocked) {
+    return NextResponse.json({ error: block.message }, { status: 403 });
   }
 
   const { data, error } = await supabase

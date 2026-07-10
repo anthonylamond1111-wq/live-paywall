@@ -1,5 +1,4 @@
-const OWNER_EMAIL =
-  process.env.OWNER_EMAIL?.toLowerCase() ?? 'anthonylamond1111@gmail.com';
+import { OWNER_EMAIL } from '@/lib/chat-admin';
 
 const OWNER_DISPLAY_NAME = process.env.OWNER_CHAT_NAME ?? 'owner';
 

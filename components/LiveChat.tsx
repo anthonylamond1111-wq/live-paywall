@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { isChatAdmin } from '@/lib/chat-admin';
 import { EVENT } from '@/lib/event';
 
 type ChatMessage = {
@@ -24,12 +25,12 @@ const MAX_MESSAGE_LENGTH = 500;
 const MESSAGE_LIMIT = 100;
 const SLOW_MODE_MS = 2000;
 const QUICK_REACTIONS = ['🔥', '🥊', '😮', '👏', '💪'];
-
-function displayNameFromEmail(email?: string | null) {
-  if (!email) return 'Viewer';
-  const local = email.split('@')[0] ?? 'Viewer';
-  return local.slice(0, 20);
-}
+const TIMEOUT_OPTIONS = [
+  { label: '5m', minutes: 5 },
+  { label: '15m', minutes: 15 },
+  { label: '30m', minutes: 30 },
+  { label: '1h', minutes: 60 },
+];
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -39,8 +40,8 @@ function isReactionOnly(body: string) {
   return QUICK_REACTIONS.includes(body.trim());
 }
 
-async function chatFetch(session: Session, init?: RequestInit) {
-  return fetch('/api/chat', {
+async function chatFetch(session: Session, path: string, init?: RequestInit) {
+  return fetch(path, {
     ...init,
     credentials: 'include',
     headers: {
@@ -63,6 +64,9 @@ export default function LiveChat({
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [lastSentAt, setLastSentAt] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [chatBlocked, setChatBlocked] = useState<string | null>(null);
+  const [modBusy, setModBusy] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const appendMessage = useCallback((message: ChatMessage) => {
@@ -77,6 +81,8 @@ export default function LiveChat({
   }, []);
 
   const sendMessage = async (body: string) => {
+    if (chatBlocked) return;
+
     const trimmed = body.trim();
     if (!trimmed || sending) return;
 
@@ -90,7 +96,7 @@ export default function LiveChat({
     setError('');
 
     try {
-      const res = await chatFetch(session, {
+      const res = await chatFetch(session, '/api/chat', {
         method: 'POST',
         body: JSON.stringify({ body: trimmed.slice(0, MAX_MESSAGE_LENGTH) }),
       });
@@ -99,6 +105,9 @@ export default function LiveChat({
 
       if (!res.ok) {
         setError(data.error ?? 'Could not send message.');
+        if (res.status === 403) {
+          setChatBlocked(data.error ?? 'You cannot chat right now.');
+        }
         return;
       }
 
@@ -115,12 +124,53 @@ export default function LiveChat({
     }
   };
 
+  const moderateUser = async (
+    action: 'ban' | 'unban' | 'timeout',
+    message: ChatMessage,
+    minutes?: number
+  ) => {
+    const key = `${action}-${message.user_id}`;
+    setModBusy(key);
+    setError('');
+
+    try {
+      const res = await chatFetch(session, '/api/chat/moderate', {
+        method: 'POST',
+        body: JSON.stringify({
+          action,
+          userId: message.user_id,
+          displayName: message.display_name,
+          minutes,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'Moderation failed.');
+        return;
+      }
+
+      if (action === 'ban') {
+        setError(`${message.display_name} has been banned from chat.`);
+      } else if (action === 'timeout') {
+        setError(`${message.display_name} timed out for ${minutes} minutes.`);
+      } else {
+        setError(`${message.display_name} can chat again.`);
+      }
+    } catch {
+      setError('Moderation request failed.');
+    } finally {
+      setModBusy(null);
+    }
+  };
+
   useEffect(() => {
     let active = true;
+    setIsAdmin(isChatAdmin(session.user.email));
 
     const loadMessages = async () => {
       try {
-        const res = await chatFetch(session);
+        const res = await chatFetch(session, '/api/chat');
         const data = await res.json();
 
         if (!active) return;
@@ -132,6 +182,10 @@ export default function LiveChat({
         }
 
         setMessages(data.messages ?? []);
+        setIsAdmin(data.isAdmin ?? isChatAdmin(session.user.email));
+        if (data.chatBlock?.message) {
+          setChatBlocked(data.chatBlock.message);
+        }
         setReady(true);
       } catch {
         if (active) {
@@ -173,6 +227,7 @@ export default function LiveChat({
   };
 
   const uniqueChatters = new Set(messages.map((m) => m.user_id)).size;
+  const canSend = !chatBlocked && !sending;
 
   return (
     <div className="flex h-72 min-h-[240px] flex-col overflow-hidden rounded-2xl border border-red-600/50 bg-zinc-900/90 shadow-lg shadow-red-900/5 landscape:h-[min(70dvh,100%)] landscape:min-h-[200px] sm:h-80 lg:h-[min(70vh,520px)] lg:min-h-[400px]">
@@ -183,6 +238,11 @@ export default function LiveChat({
             <h3 className="text-sm font-semibold uppercase tracking-wider text-white">
               Live Chat
             </h3>
+            {isAdmin && (
+              <span className="rounded bg-red-600/30 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-300">
+                Admin
+              </span>
+            )}
           </div>
           {ready && !error && (
             <span className="text-[10px] text-gray-500">
@@ -198,6 +258,11 @@ export default function LiveChat({
               ? 'Paid viewers only'
               : 'Pre-show chat — stream starting soon'}
         </p>
+        {isAdmin && (
+          <p className="mt-1 text-[10px] text-red-400/80">
+            Admin: use timeout or ban on any message below
+          </p>
+        )}
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
@@ -209,7 +274,7 @@ export default function LiveChat({
           </div>
         )}
 
-        {ready && messages.length === 0 && !error && (
+        {ready && messages.length === 0 && !error && !chatBlocked && (
           <p className="text-center text-sm text-gray-500">
             No messages yet. Say something to kick off the chat.
           </p>
@@ -218,6 +283,7 @@ export default function LiveChat({
         {messages.map((message) => {
           const isOwn = message.user_id === session.user.id;
           const reactionOnly = isReactionOnly(message.body);
+          const showMod = isAdmin && !isOwn;
 
           return (
             <div key={message.id} className={isOwn ? 'text-right' : 'text-left'}>
@@ -244,6 +310,38 @@ export default function LiveChat({
                   {message.body}
                 </p>
               </div>
+
+              {showMod && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {TIMEOUT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      disabled={!!modBusy}
+                      onClick={() => void moderateUser('timeout', message, opt.minutes)}
+                      className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-gray-400 transition hover:border-amber-500 hover:text-amber-400 disabled:opacity-50"
+                    >
+                      {modBusy === `timeout-${message.user_id}` ? '…' : opt.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={!!modBusy}
+                    onClick={() => void moderateUser('ban', message)}
+                    className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-gray-400 transition hover:border-red-500 hover:text-red-400 disabled:opacity-50"
+                  >
+                    {modBusy === `ban-${message.user_id}` ? '…' : 'Ban'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!!modBusy}
+                    onClick={() => void moderateUser('unban', message)}
+                    className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-gray-400 transition hover:border-green-500 hover:text-green-400 disabled:opacity-50"
+                  >
+                    Unban
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
@@ -251,39 +349,52 @@ export default function LiveChat({
       </div>
 
       <form onSubmit={handleSend} className="border-t border-zinc-800 bg-zinc-900/80 p-3">
-        {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
+        {chatBlocked && (
+          <p className="mb-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {chatBlocked}
+          </p>
+        )}
 
-        <div className="mb-2 flex gap-1">
-          {QUICK_REACTIONS.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              disabled={sending}
-              onClick={() => void sendMessage(emoji)}
-              className="rounded-lg px-2 py-1 text-lg transition hover:bg-zinc-800 disabled:opacity-50"
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
+        {error && !chatBlocked && (
+          <p className="mb-2 text-xs text-red-400">{error}</p>
+        )}
 
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            maxLength={MAX_MESSAGE_LENGTH}
-            placeholder="Message the room…"
-            className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm text-white outline-none transition focus:border-red-500"
-          />
-          <button
-            type="submit"
-            disabled={sending || !draft.trim()}
-            className="shrink-0 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-gray-100 disabled:opacity-50"
-          >
-            Send
-          </button>
-        </div>
+        {!chatBlocked && (
+          <>
+            <div className="mb-2 flex gap-1">
+              {QUICK_REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  disabled={!canSend}
+                  onClick={() => void sendMessage(emoji)}
+                  className="rounded-lg px-2 py-1 text-lg transition hover:bg-zinc-800 disabled:opacity-50"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                maxLength={MAX_MESSAGE_LENGTH}
+                placeholder="Message the room…"
+                disabled={!canSend}
+                className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm text-white outline-none transition focus:border-red-500 disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={!canSend || !draft.trim()}
+                className="shrink-0 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-gray-100 disabled:opacity-50"
+              >
+                Send
+              </button>
+            </div>
+          </>
+        )}
       </form>
     </div>
   );

@@ -33,7 +33,7 @@ export const EVENT = {
   liveUpdateMessage: process.env.NEXT_PUBLIC_LIVE_UPDATE_MESSAGE ?? '',
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'support@ufcaccess.co.uk',
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.ufcaccess.co.uk',
-  priceLabel: process.env.NEXT_PUBLIC_CHECKOUT_LABEL ?? 'Pay £2 to Join Live',
+  priceLabel: process.env.NEXT_PUBLIC_CHECKOUT_LABEL ?? 'Pay £2.50 to Join Live',
   fighter1Stats: {
     name: 'Conor McGregor',
     nickname: 'The Notorious',

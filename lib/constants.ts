@@ -18,4 +18,4 @@ export const PLAYER_STREAM_URL = '/api/hls/playlist';
 export const PREVIEW_SECONDS = 60;
 
 export const CHECKOUT_LABEL =
-  process.env.NEXT_PUBLIC_CHECKOUT_LABEL ?? 'Pay £2 to Join Live';
+  process.env.NEXT_PUBLIC_CHECKOUT_LABEL ?? 'Pay £2.50 to Join Live';

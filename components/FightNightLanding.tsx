@@ -9,8 +9,39 @@ type FightNightLandingProps = {
   hideSignupCta?: boolean;
 };
 
-const HERO_IMAGE =
-  process.env.NEXT_PUBLIC_HERO_IMAGE ?? '/fighters/hero-octagon.png';
+const HERO_MOBILE =
+  process.env.NEXT_PUBLIC_HERO_IMAGE_MOBILE ??
+  process.env.NEXT_PUBLIC_HERO_IMAGE ??
+  '/fighters/hero-mobile.png';
+
+const HERO_DESKTOP =
+  process.env.NEXT_PUBLIC_HERO_IMAGE_DESKTOP ??
+  process.env.NEXT_PUBLIC_HERO_IMAGE ??
+  '/fighters/hero-desktop.png';
+
+const heroImgClass =
+  'hero-octagon-image absolute inset-0 h-full w-full object-cover';
+
+function HeroBackground() {
+  return (
+    <>
+      <img
+        src={HERO_MOBILE}
+        alt=""
+        fetchPriority="high"
+        decoding="async"
+        className={`${heroImgClass} object-[center_20%] md:hidden`}
+      />
+      <img
+        src={HERO_DESKTOP}
+        alt=""
+        fetchPriority="high"
+        decoding="async"
+        className={`${heroImgClass} hidden object-center md:block`}
+      />
+    </>
+  );
+}
 
 function pad(n: number) {
   return n.toString().padStart(2, '0');
@@ -69,13 +100,7 @@ export default function FightNightLanding({
 }: FightNightLandingProps) {
   return (
     <section className="relative h-[50dvh] min-h-[300px] w-full overflow-hidden">
-      <img
-        src={HERO_IMAGE}
-        alt=""
-        fetchPriority="high"
-        decoding="async"
-        className="hero-octagon-image absolute inset-0 h-full w-full object-cover object-[center_35%]"
-      />
+      <HeroBackground />
 
       <div className="hero-octagon-vignette absolute inset-0" aria-hidden />
 

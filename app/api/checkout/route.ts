@@ -1,4 +1,8 @@
 import { NextResponse } from 'next/server';
+import {
+  STRIPE_CHECKOUT_BRANDING,
+  STRIPE_CHECKOUT_CUSTOM_TEXT,
+} from '@/lib/stripe-checkout';
 import { getStripe } from '@/lib/stripe';
 import { getUserFromRequest } from '@/lib/supabase/server';
 
@@ -60,10 +64,13 @@ export async function POST(request: Request) {
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      payment_method_types: ['card'],
       customer_email: user.email,
       client_reference_id: user.id,
       metadata: { user_id: user.id },
       line_items: [{ quantity: 1, price: priceId }],
+      branding_settings: STRIPE_CHECKOUT_BRANDING,
+      custom_text: STRIPE_CHECKOUT_CUSTOM_TEXT,
       success_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?canceled=1`,
     });

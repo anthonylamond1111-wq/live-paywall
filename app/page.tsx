@@ -5,6 +5,7 @@ import type { Session } from '@supabase/supabase-js';
 import AddToHomeScreen from '@/components/AddToHomeScreen';
 import BrandIntro from '@/components/BrandIntro';
 import BrandLogo from '@/components/BrandLogo';
+import EventCountdown from '@/components/EventCountdown';
 import FAQ from '@/components/FAQ';
 import FightNightLanding from '@/components/FightNightLanding';
 import FreeVsPaid from '@/components/FreeVsPaid';
@@ -266,6 +267,12 @@ export default function UFCAccess() {
     setView('success');
   };
 
+  const scrollToSignup = (mode: 'login' | 'signup') => {
+    setAuthMode(mode);
+    setMessage('');
+    document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const isLoggedIn = !!session;
   const showAuthGate = !isLoggedIn || view === 'auth';
   const showHero = showAuthGate || view === 'pay' || view === 'success';
@@ -322,7 +329,8 @@ export default function UFCAccess() {
         <FightNightLanding
           journeyStep={journeyStep}
           hideSignupCta={!showAuthGate}
-          extendForSuccess={view === 'success'}
+          onCreateAccount={() => scrollToSignup('signup')}
+          onSignIn={() => scrollToSignup('login')}
         />
       )}
 
@@ -344,6 +352,7 @@ export default function UFCAccess() {
         {showAuthGate && (
           <div className="mx-auto w-full max-w-2xl space-y-6">
             <PreviewStream />
+            <EventCountdown />
             <FreeVsPaid />
 
             <div
@@ -439,7 +448,7 @@ export default function UFCAccess() {
         )}
 
         {view === 'success' && isLoggedIn && (
-          <div className="success-over-hero relative z-20 -mt-[9.5rem]">
+          <div className="relative z-20">
             <SuccessScreen
               email={session?.user.email}
               purchaseJustCompleted={purchaseJustCompleted}

@@ -91,76 +91,97 @@ export default function PreviewStream() {
   const urgent = remaining <= 15 && !expired;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-red-600/50 bg-zinc-900/90 shadow-lg shadow-red-900/10 sm:rounded-3xl">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-red-400">
-            Free preview
-          </p>
-          <p className="text-sm text-gray-400">
-            {isBeforeStart
-              ? 'Preview available when the stream goes live'
-              : "Sample of tonight's live broadcast"}
-          </p>
-        </div>
-        {!expired && !loading && (
-          <div
-            className={`rounded-full px-3 py-1.5 text-xs font-mono font-semibold ${
-              urgent
-                ? 'animate-pulse bg-red-500/20 text-red-300 ring-1 ring-red-500/50'
-                : 'bg-red-500/10 text-red-300'
-            }`}
-          >
-            {formatCountdown(remaining)} left
-          </div>
-        )}
-      </div>
-
-      <div className="relative">
-        {loading && (
-          <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-black">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
-            <p className="text-sm text-gray-500">Loading preview…</p>
-          </div>
-        )}
-
-        {!loading && isBeforeStart && !expired && (
-          <StreamOffline
-            variant="scheduled"
-            subtitle="The free preview will be available here when the broadcast begins."
-          />
-        )}
-
-        {!loading && previewUrl && !expired && !isBeforeStart && <StreamPlayer src={previewUrl} />}
-
-        {!loading && expired && (
-          <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-black px-6 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10">
-              <svg className="h-7 w-7 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+    <div className="preview-frame group relative overflow-hidden rounded-2xl sm:rounded-3xl">
+      <div className="preview-frame-inner">
+        <div className="flex items-center justify-between border-b border-white/5 bg-gradient-to-r from-zinc-900/95 via-zinc-900/80 to-zinc-900/95 px-4 py-3.5 sm:px-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="preview-live-dot h-2 w-2 rounded-full bg-red-500" />
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-400">
+                Free preview
+              </p>
             </div>
-            <p className="text-lg font-semibold text-white">Preview ended</p>
-            <p className="max-w-sm text-sm text-gray-400">
-              Create an account below to unlock the official stream and live chat.
+            <p className="mt-1 text-sm text-gray-400">
+              {isBeforeStart
+                ? 'Preview available when the stream goes live'
+                : "Sample of tonight's live broadcast"}
             </p>
           </div>
-        )}
-
-        {!loading && !expired && previewUrl && !isBeforeStart && (
-          <>
-            <div className="pointer-events-none absolute left-3 top-3 rounded-lg bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wider text-gray-300 backdrop-blur-sm">
-              Preview only
+          {!expired && !loading && (
+            <div
+              className={`rounded-full px-3 py-1.5 text-xs font-mono font-semibold tabular-nums ${
+                urgent
+                  ? 'animate-pulse bg-red-500/25 text-red-200 ring-1 ring-red-500/60'
+                  : 'bg-red-500/10 text-red-300 ring-1 ring-red-500/20'
+              }`}
+            >
+              {formatCountdown(remaining)} left
             </div>
-            {urgent && (
-              <div className="pointer-events-none absolute inset-x-0 top-12 flex justify-center">
-                <div className="rounded-full bg-red-600/90 px-4 py-1.5 text-xs font-semibold text-white shadow-lg">
-                  Preview ends in {formatCountdown(remaining)} — sign up to keep watching
-                </div>
+          )}
+        </div>
+
+        <div className="relative bg-black">
+          {loading && (
+            <div className="flex aspect-video flex-col items-center justify-center gap-4 bg-gradient-to-b from-zinc-950 to-black">
+              <div className="relative">
+                <div className="h-12 w-12 animate-spin rounded-full border-2 border-red-500/30 border-t-red-500" />
+                <div className="absolute inset-0 h-12 w-12 animate-ping rounded-full border border-red-500/20" />
               </div>
-            )}
-          </>
-        )}
+              <p className="text-sm text-gray-500">Loading preview…</p>
+            </div>
+          )}
+
+          {!loading && isBeforeStart && !expired && (
+            <StreamOffline
+              variant="scheduled"
+              subtitle="The free preview will be available here when the broadcast begins."
+            />
+          )}
+
+          {!loading && previewUrl && !expired && !isBeforeStart && <StreamPlayer src={previewUrl} />}
+
+          {!loading && expired && (
+            <div className="preview-ended flex aspect-video flex-col items-center justify-center gap-4 bg-gradient-to-b from-zinc-950 via-black to-black px-6 text-center">
+              <div className="preview-lock-icon flex h-16 w-16 items-center justify-center rounded-full">
+                <svg className="h-8 w-8 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-white sm:text-2xl">Preview ended</p>
+                <p className="mt-2 max-w-sm text-sm leading-relaxed text-gray-400">
+                  Create an account to unlock the official stream and live chat.
+                </p>
+              </div>
+              <a
+                href="#signup"
+                className="mt-1 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-gray-100"
+              >
+                Create your account
+              </a>
+            </div>
+          )}
+
+          {!loading && !expired && previewUrl && !isBeforeStart && (
+            <>
+              <div className="pointer-events-none absolute left-3 top-3 rounded-md bg-black/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-200 ring-1 ring-white/10 backdrop-blur-sm">
+                Preview only
+              </div>
+              {urgent && (
+                <div className="pointer-events-none absolute inset-x-0 top-12 flex justify-center px-4">
+                  <div className="rounded-full bg-red-600/95 px-4 py-2 text-xs font-semibold text-white shadow-[0_0_24px_rgba(220,38,38,0.5)]">
+                    Preview ends in {formatCountdown(remaining)} — sign up to keep watching
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

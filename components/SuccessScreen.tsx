@@ -27,13 +27,13 @@ export default function SuccessScreen({
 
   return (
     <div className="mx-auto max-w-lg text-center">
-      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full border-2 border-green-500/40 bg-green-500/10 sm:mb-8 sm:h-24 sm:w-24">
+      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full border-2 border-green-500/40 bg-black/50 shadow-lg backdrop-blur-sm sm:mb-8 sm:h-24 sm:w-24">
         <svg className="h-12 w-12 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
       </div>
 
-      <div className="mb-2 inline-block rounded-full border border-green-500/30 bg-green-500/10 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-green-400">
+      <div className="mb-2 inline-block rounded-full border border-green-500/30 bg-black/50 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-green-400 shadow-lg backdrop-blur-sm">
         Access confirmed
       </div>
 

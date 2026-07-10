@@ -7,6 +7,8 @@ import JourneyProgress from '@/components/JourneyProgress';
 type FightNightLandingProps = {
   journeyStep: 'preview' | 'account' | 'pay' | 'watch';
   hideSignupCta?: boolean;
+  /** Extra height (px) so poster reaches the Access confirmed badge on success */
+  extendForSuccess?: boolean;
 };
 
 const HERO_MOBILE =
@@ -97,9 +99,16 @@ function CountdownUnit({ label, value }: { label: string; value: string }) {
 export default function FightNightLanding({
   journeyStep,
   hideSignupCta = false,
+  extendForSuccess = false,
 }: FightNightLandingProps) {
   return (
-    <section className="relative h-[50dvh] min-h-[300px] w-full overflow-hidden">
+    <section
+      className={`relative w-full overflow-hidden ${
+        extendForSuccess
+          ? 'h-[calc(50dvh+9.5rem)] min-h-[420px]'
+          : 'h-[50dvh] min-h-[300px]'
+      }`}
+    >
       <HeroBackground />
 
       <div className="hero-octagon-vignette absolute inset-0" aria-hidden />
@@ -111,7 +120,14 @@ export default function FightNightLanding({
           </div>
         </div>
 
-        <div className="flex flex-1 items-center justify-center px-4 pb-4 sm:px-8 sm:pb-6">
+        <div
+          className={
+            hideSignupCta
+              ? 'flex-1'
+              : 'flex flex-1 items-center justify-center px-4 pb-4 sm:px-8 sm:pb-6'
+          }
+        >
+          {!hideSignupCta && (
           <div className="w-full max-w-sm rounded-xl border border-red-600/40 bg-black/70 px-5 py-5 text-center shadow-[0_0_40px_rgba(0,0,0,0.8)] backdrop-blur-sm sm:max-w-md sm:rounded-2xl sm:px-7 sm:py-7">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-500 sm:text-xs">
               {EVENT.number} • {EVENT.tagline}
@@ -122,15 +138,14 @@ export default function FightNightLanding({
             <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-300 sm:text-[11px]">
               Available exclusively on UFC Access
             </p>
-            {!hideSignupCta && (
-              <a
-                href="#signup"
-                className="mt-2 inline-block text-sm font-medium text-red-400 underline underline-offset-4 transition hover:text-red-300"
-              >
-                Sign up to watch live
-              </a>
-            )}
+            <a
+              href="#signup"
+              className="mt-2 inline-block text-sm font-medium text-red-400 underline underline-offset-4 transition hover:text-red-300"
+            >
+              Sign up to watch live
+            </a>
           </div>
+          )}
         </div>
       </div>
     </section>

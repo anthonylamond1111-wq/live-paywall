@@ -141,15 +141,15 @@ body {
   animation: hero-vs-pulse 2.5s ease-in-out infinite;
 }
 
-/* Octagon hero — image is already on-brand; light vignette for card readability */
+/* Hero poster — no filters; keeps image sharp */
 .hero-octagon-image {
-  filter: contrast(1.05) brightness(0.95);
+  image-rendering: auto;
 }
 
 .hero-octagon-vignette {
   background:
-    radial-gradient(ellipse 60% 55% at 50% 50%, rgba(0, 0, 0, 0.1) 0%, transparent 65%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, transparent 20%, transparent 88%, rgba(0, 0, 0, 0.7) 100%);
+    radial-gradient(ellipse 60% 55% at 50% 50%, rgba(0, 0, 0, 0.08) 0%, transparent 65%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, transparent 18%, transparent 82%, rgba(0, 0, 0, 0.55) 100%);
 }
 
 .hero-journey-bar {

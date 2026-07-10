@@ -319,7 +319,11 @@ export default function UFCAccess() {
       </nav>
 
       {showHero && (
-        <FightNightLanding journeyStep={journeyStep} hideSignupCta={!showAuthGate} />
+        <FightNightLanding
+          journeyStep={journeyStep}
+          hideSignupCta={!showAuthGate}
+          extendForSuccess={view === 'success'}
+        />
       )}
 
       <main
@@ -435,12 +439,14 @@ export default function UFCAccess() {
         )}
 
         {view === 'success' && isLoggedIn && (
-          <SuccessScreen
-            email={session?.user.email}
-            purchaseJustCompleted={purchaseJustCompleted}
-            busy={busy}
-            onWatch={handleWatchStream}
-          />
+          <div className="success-over-hero relative z-20 -mt-[9.5rem]">
+            <SuccessScreen
+              email={session?.user.email}
+              purchaseJustCompleted={purchaseJustCompleted}
+              busy={busy}
+              onWatch={handleWatchStream}
+            />
+          </div>
         )}
 
         {view === 'stream' && isLoggedIn && streamUrl && session && (

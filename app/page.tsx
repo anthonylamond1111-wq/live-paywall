@@ -318,19 +318,21 @@ export default function UFCAccess() {
         </div>
       </nav>
 
+      {showHero && (
+        <FightNightLanding journeyStep={journeyStep} hideSignupCta={!showAuthGate} />
+      )}
+
       <main
         className={`relative mx-auto px-4 sm:px-6 ${
-          showAuthGate
-            ? 'max-w-6xl pb-10 pt-24 sm:pb-20 sm:pt-28'
-            : view === 'stream'
-              ? 'max-w-6xl pb-6 pt-24 sm:pt-28'
-              : 'max-w-5xl pb-10 pt-24 sm:pb-20 sm:pt-28'
+          showHero
+            ? 'max-w-6xl pb-10'
+            : showAuthGate
+              ? 'max-w-6xl pb-10 pt-24 sm:pb-20 sm:pt-28'
+              : view === 'stream'
+                ? 'max-w-6xl pb-6 pt-24 sm:pt-28'
+                : 'max-w-5xl pb-10 pt-24 sm:pb-20 sm:pt-28'
         }`}
       >
-        {showHero && (
-          <FightNightLanding journeyStep={journeyStep} hideSignupCta={!showAuthGate} />
-        )}
-
         {showAuthGate && <NotifyWhenLive />}
 
         {view === 'loading' && isLoggedIn && <LoadingSkeleton />}

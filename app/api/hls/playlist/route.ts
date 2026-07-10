@@ -3,7 +3,12 @@ import { STREAM_URL } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_HOSTS = ['livepeercdn.studio', 'playback.livepeer.studio'];
+const ALLOWED_HOSTS = [
+  'cloudflarestream.com',
+  'videodelivery.net',
+  'livepeercdn.studio',
+  'playback.livepeer.studio',
+];
 
 function isAllowedUrl(url: string) {
   try {
@@ -35,7 +40,7 @@ export async function GET(request: Request) {
 
   if (!target) {
     return NextResponse.json(
-      { error: 'Stream not configured. Set LIVEPEER_PLAYBACK_ID on Railway.' },
+      { error: 'Stream not configured. Set STREAM_URL on Railway.' },
       { status: 500 }
     );
   }

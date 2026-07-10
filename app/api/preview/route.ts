@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
-import { PLAYER_STREAM_URL, PREVIEW_SECONDS } from '@/lib/constants';
+import { PREVIEW_SECONDS, STREAM_URL } from '@/lib/constants';
 
 export async function GET() {
+  if (!STREAM_URL) {
+    return NextResponse.json({ error: 'Stream not configured' }, { status: 500 });
+  }
+
   return NextResponse.json({
-    url: PLAYER_STREAM_URL,
+    url: STREAM_URL,
     seconds: PREVIEW_SECONDS,
   });
 }

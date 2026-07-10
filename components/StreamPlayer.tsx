@@ -29,7 +29,7 @@ export default function StreamPlayer({ src, fill = false }: StreamPlayerProps) {
     if (Hls.isSupported()) {
       hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
+        lowLatencyMode: false,
         backBufferLength: 30,
       });
 
@@ -55,7 +55,7 @@ export default function StreamPlayer({ src, fill = false }: StreamPlayerProps) {
         }
 
         setError(
-          'Stream offline — make sure OBS is streaming to Livepeer, then refresh this page.'
+          'Stream offline — make sure OBS is streaming to Cloudflare, then refresh this page.'
         );
         hls?.destroy();
       });

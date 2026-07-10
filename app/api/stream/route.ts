@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PLAYER_STREAM_URL } from '@/lib/constants';
+import { STREAM_URL } from '@/lib/constants';
 import {
   getTokenFromRequest,
   getUserFromRequest,
@@ -12,11 +12,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  if (!STREAM_URL) {
+    return NextResponse.json({ error: 'Stream not configured' }, { status: 500 });
+  }
+
   const token = getTokenFromRequest(request);
   const paid = await resolveUserAccess(user, token);
   if (!paid) {
     return NextResponse.json({ error: 'Payment required' }, { status: 402 });
   }
 
-  return NextResponse.json({ url: PLAYER_STREAM_URL });
+  return NextResponse.json({ url: STREAM_URL });
 }

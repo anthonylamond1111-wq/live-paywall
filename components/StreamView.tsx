@@ -31,12 +31,18 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
   const [health, setHealth] = useState<StreamHealthStatus>('offline');
   const { isBeforeStart } = useStreamSchedule();
   const fullscreenRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { enter: enterNativeFullscreen, exit: exitNativeFullscreen } =
-    useStreamFullscreen(fullscreenRef);
+    useStreamFullscreen(fullscreenRef, videoRef);
 
   const handleEnterFullscreen = async () => {
-    const entered = await enterNativeFullscreen();
-    setPlayerMode(entered ? 'fullscreen' : 'fullscreen');
+    const preferVideo =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 768px)').matches;
+    const entered = await enterNativeFullscreen(preferVideo);
+    if (!entered || !preferVideo) {
+      setPlayerMode('fullscreen');
+    }
   };
 
   const handleExitFullscreen = async () => {
@@ -54,15 +60,23 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
     document.body.style.overflow = 'hidden';
 
     const onFullscreenChange = () => {
-      if (!document.fullscreenElement) {
+      const webkitVideo = videoRef.current as HTMLVideoElement & {
+        webkitDisplayingFullscreen?: boolean;
+      } | null;
+      if (!document.fullscreenElement && !webkitVideo?.webkitDisplayingFullscreen) {
         setPlayerMode('normal');
       }
     };
 
     document.addEventListener('fullscreenchange', onFullscreenChange);
+    videoRef.current?.addEventListener('webkitbeginfullscreen', onFullscreenChange);
+    videoRef.current?.addEventListener('webkitendfullscreen', onFullscreenChange);
+
     return () => {
       document.body.style.overflow = '';
       document.removeEventListener('fullscreenchange', onFullscreenChange);
+      videoRef.current?.removeEventListener('webkitbeginfullscreen', onFullscreenChange);
+      videoRef.current?.removeEventListener('webkitendfullscreen', onFullscreenChange);
     };
   }, [playerMode]);
 
@@ -80,7 +94,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
       ref={fullscreenRef}
       className={
         isFullscreen
-          ? 'fixed inset-0 z-[100] flex h-[100dvh] flex-col bg-black pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]'
+          ? 'fixed inset-0 z-[100] flex h-[100dvh] w-full flex-col bg-black'
           : 'space-y-3 sm:space-y-4'
       }
     >
@@ -143,14 +157,14 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
       )}
 
       {isFullscreen && (
-        <div className="flex shrink-0 items-center justify-between border-b border-red-600/40 bg-black/90 px-4 py-3">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-[max(0.75rem,env(safe-area-inset-top))_1rem_2rem]">
           <BrandLogo size="fullscreen" />
           <button
             type="button"
             onClick={handleExitFullscreen}
-            className="rounded-lg border border-white/20 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/10 sm:text-sm"
+            className="pointer-events-auto rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/10 sm:text-sm"
           >
-            Exit fullscreen
+            Exit
           </button>
         </div>
       )}
@@ -158,7 +172,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
       <div
         className={
           isFullscreen
-            ? 'min-h-0 flex-1'
+            ? 'relative min-h-0 flex-1'
             : isTheatre
               ? 'mx-auto w-full max-w-6xl space-y-4'
               : 'flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_340px] lg:gap-6'
@@ -176,6 +190,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
           <StreamPlayer
             src={streamUrl}
             fill={isFullscreen}
+            videoRef={videoRef}
             onLiveChange={setIsLive}
             onHealthChange={setHealth}
             onRequestFullscreen={isFullscreen ? undefined : handleEnterFullscreen}

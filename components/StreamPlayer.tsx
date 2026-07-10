@@ -13,12 +13,31 @@ type QualityLevel = {
 type StreamPlayerProps = {
   src: string;
   fill?: boolean;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
   onRequestFullscreen?: () => void;
   onLiveChange?: (live: boolean) => void;
   onHealthChange?: (status: StreamHealthStatus) => void;
 };
 
-export default function StreamPlayer({ src, fill = false, onRequestFullscreen, onLiveChange, onHealthChange }: StreamPlayerProps) {
+function assignVideoRef(
+  node: HTMLVideoElement | null,
+  internalRef: React.RefObject<HTMLVideoElement | null>,
+  externalRef?: React.RefObject<HTMLVideoElement | null>
+) {
+  internalRef.current = node;
+  if (externalRef) {
+    externalRef.current = node;
+  }
+}
+
+export default function StreamPlayer({
+  src,
+  fill = false,
+  videoRef: externalVideoRef,
+  onRequestFullscreen,
+  onLiveChange,
+  onHealthChange,
+}: StreamPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,11 +97,24 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
     video.addEventListener('loadeddata', signalLiveIfPicture);
     video.addEventListener('playing', signalLiveIfPicture);
 
+    const syncToLiveEdge = () => {
+      if (!video || !Number.isFinite(video.duration)) return;
+      const behindLive = video.duration - video.currentTime;
+      if (behindLive > 6) {
+        video.currentTime = Math.max(0, video.duration - 2);
+      }
+    };
+
     if (Hls.isSupported()) {
       hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 30,
+        lowLatencyMode: true,
+        backBufferLength: 0,
+        liveSyncDurationCount: 2,
+        liveMaxLatencyDurationCount: 5,
+        maxLiveSyncPlaybackRate: 1.25,
+        maxBufferLength: 20,
+        maxMaxBufferLength: 30,
       });
       hlsRef.current = hls;
 
@@ -96,8 +128,11 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
         }));
         setLevels(qualityLevels);
         setCurrentLevel(hls?.currentLevel ?? -1);
+        hls?.startLoad(-1);
         startPlayback();
       });
+
+      hls.on(Hls.Events.FRAG_BUFFERED, syncToLiveEdge);
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
         setCurrentLevel(data.level);
@@ -131,7 +166,10 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
         hls?.destroy();
       });
 
+      const liveSyncTimer = window.setInterval(syncToLiveEdge, 4000);
+
       return () => {
+        window.clearInterval(liveSyncTimer);
         video.removeEventListener('loadeddata', signalLiveIfPicture);
         video.removeEventListener('playing', signalLiveIfPicture);
         hls?.destroy();
@@ -141,11 +179,17 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
 
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = src;
-      video.addEventListener('loadedmetadata', startPlayback);
+      const onNativeMetadata = () => {
+        startPlayback();
+        syncToLiveEdge();
+      };
+      video.addEventListener('loadedmetadata', onNativeMetadata);
+      const liveSyncTimer = window.setInterval(syncToLiveEdge, 4000);
       return () => {
+        window.clearInterval(liveSyncTimer);
         video.removeEventListener('loadeddata', signalLiveIfPicture);
         video.removeEventListener('playing', signalLiveIfPicture);
-        video.removeEventListener('loadedmetadata', startPlayback);
+        video.removeEventListener('loadedmetadata', onNativeMetadata);
         video.removeAttribute('src');
         video.load();
       };
@@ -215,11 +259,13 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
       onTouchStart={resetHideTimer}
     >
       <video
-        ref={videoRef}
+        ref={(node) => assignVideoRef(node, videoRef, externalVideoRef)}
         autoPlay
         muted
         playsInline
-        className={`h-full w-full bg-black ${fill ? 'min-h-0 object-contain' : 'aspect-video object-contain'}`}
+        className={`h-full w-full bg-black ${
+          fill ? 'min-h-0 object-cover' : 'aspect-video object-contain'
+        }`}
         onPlay={() => {
           setPlaying(true);
           onHealthChange?.('good');
@@ -351,8 +397,40 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
   );
 }
 
-export function useStreamFullscreen(containerRef: React.RefObject<HTMLElement | null>) {
-  const enter = async () => {
+export function useStreamFullscreen(
+  containerRef: React.RefObject<HTMLElement | null>,
+  videoRef?: React.RefObject<HTMLVideoElement | null>
+) {
+  const enterVideoFullscreen = async () => {
+    const video = videoRef?.current;
+    if (!video) return false;
+
+    try {
+      const webkitVideo = video as HTMLVideoElement & {
+        webkitEnterFullscreen?: () => void;
+      };
+      if (webkitVideo.webkitEnterFullscreen) {
+        webkitVideo.webkitEnterFullscreen();
+        return true;
+      }
+      if (video.requestFullscreen) {
+        await video.requestFullscreen();
+        return true;
+      }
+      const webkitVideoEl = video as HTMLVideoElement & {
+        webkitRequestFullscreen?: () => Promise<void>;
+      };
+      if (webkitVideoEl.webkitRequestFullscreen) {
+        await webkitVideoEl.webkitRequestFullscreen();
+        return true;
+      }
+    } catch {
+      return false;
+    }
+    return false;
+  };
+
+  const enterContainerFullscreen = async () => {
     const el = containerRef.current;
     if (!el) return false;
 
@@ -367,13 +445,34 @@ export function useStreamFullscreen(containerRef: React.RefObject<HTMLElement | 
         return true;
       }
     } catch {
-      // Fall back to CSS overlay mode in parent
+      return false;
+    }
+    return false;
+  };
+
+  const enter = async (preferVideo = false) => {
+    if (preferVideo && (await enterVideoFullscreen())) {
+      return true;
+    }
+    if (await enterContainerFullscreen()) {
+      return true;
+    }
+    if (!preferVideo && (await enterVideoFullscreen())) {
+      return true;
     }
     return false;
   };
 
   const exit = async () => {
     try {
+      const webkitVideo = videoRef?.current as HTMLVideoElement & {
+        webkitDisplayingFullscreen?: boolean;
+        webkitExitFullscreen?: () => void;
+      } | undefined;
+      if (webkitVideo?.webkitDisplayingFullscreen && webkitVideo.webkitExitFullscreen) {
+        webkitVideo.webkitExitFullscreen();
+        return;
+      }
       if (document.fullscreenElement) {
         await document.exitFullscreen();
       }

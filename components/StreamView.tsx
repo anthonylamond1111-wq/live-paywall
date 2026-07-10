@@ -70,7 +70,6 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
   const isFullscreen = playerMode === 'fullscreen';
   const isTheatre = playerMode === 'theatre';
   const showOfflinePlaceholder = isBeforeStart;
-  const showWaiting = !isBeforeStart && !isLive;
 
   const statusLabel = isBeforeStart
     ? 'Stream has not started yet'
@@ -200,18 +199,12 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
                   : ''
             }`}
           >
-            {showOfflinePlaceholder || showWaiting ? (
-              <div className="flex h-72 flex-col items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/60 px-6 text-center sm:h-80 lg:h-[min(70vh,520px)]">
-                <p className="text-sm font-semibold text-gray-300">Chat opens when the stream goes live</p>
-                <p className="mt-2 text-xs text-gray-500">
-                  {isBeforeStart
-                    ? 'Come back at the scheduled start time.'
-                    : 'Hang tight — the broadcast should begin shortly.'}
-                </p>
-              </div>
-            ) : (
-              <LiveChat session={session} viewerCount={viewerCount} />
-            )}
+            <LiveChat
+              session={session}
+              viewerCount={viewerCount}
+              streamLive={isLive}
+              beforeStreamStart={isBeforeStart}
+            />
           </div>
         )}
       </div>

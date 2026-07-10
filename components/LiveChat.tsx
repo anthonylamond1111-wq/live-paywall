@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { EVENT } from '@/lib/event';
 
 type ChatMessage = {
   id: string;
@@ -15,6 +16,8 @@ type ChatMessage = {
 type LiveChatProps = {
   session: Session;
   viewerCount?: number;
+  streamLive?: boolean;
+  beforeStreamStart?: boolean;
 };
 
 const MAX_MESSAGE_LENGTH = 500;
@@ -36,7 +39,12 @@ function isReactionOnly(body: string) {
   return QUICK_REACTIONS.includes(body.trim());
 }
 
-export default function LiveChat({ session, viewerCount }: LiveChatProps) {
+export default function LiveChat({
+  session,
+  viewerCount,
+  streamLive = true,
+  beforeStreamStart = false,
+}: LiveChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -160,7 +168,13 @@ export default function LiveChat({ session, viewerCount }: LiveChatProps) {
             </span>
           )}
         </div>
-        <p className="mt-1 text-xs text-gray-500">Paid viewers only</p>
+        <p className="mt-1 text-xs text-gray-500">
+          {beforeStreamStart
+            ? `Pre-event chat — stream live ${EVENT.streamStartLabel}`
+            : streamLive
+              ? 'Paid viewers only'
+              : 'Pre-show chat — stream starting soon'}
+        </p>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">

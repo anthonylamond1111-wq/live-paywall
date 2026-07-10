@@ -8,6 +8,7 @@ import EventBanner from '@/components/EventBanner';
 import FightInfo from '@/components/FightInfo';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import BrandLogo from '@/components/BrandLogo';
+import ViewerCount from '@/components/ViewerCount';
 
 type PlayerMode = 'normal' | 'theatre' | 'fullscreen';
 type MobileTab = 'watch' | 'chat';

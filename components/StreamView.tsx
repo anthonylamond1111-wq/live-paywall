@@ -6,6 +6,7 @@ import StreamPlayer, { useStreamFullscreen } from '@/components/StreamPlayer';
 import LiveChat from '@/components/LiveChat';
 import EventBanner from '@/components/EventBanner';
 import FightInfo from '@/components/FightInfo';
+import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import ViewerCount from '@/components/ViewerCount';
 
 type PlayerMode = 'normal' | 'theatre' | 'fullscreen';
@@ -21,6 +22,8 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
   const [playerMode, setPlayerMode] = useState<PlayerMode>('normal');
   const [mobileTab, setMobileTab] = useState<MobileTab>('watch');
   const [viewerCount, setViewerCount] = useState(1);
+  const [isLive, setIsLive] = useState(false);
+  const { isBeforeStart } = useStreamSchedule();
   const fullscreenRef = useRef<HTMLDivElement>(null);
   const { enter: enterNativeFullscreen, exit: exitNativeFullscreen } =
     useStreamFullscreen(fullscreenRef);
@@ -59,6 +62,14 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
 
   const isFullscreen = playerMode === 'fullscreen';
   const isTheatre = playerMode === 'theatre';
+  const showOfflinePlaceholder = isBeforeStart;
+  const showWaiting = !isBeforeStart && !isLive;
+
+  const statusLabel = isBeforeStart
+    ? 'Stream has not started yet'
+    : isLive
+      ? 'Live broadcast in progress'
+      : 'Waiting for broadcast';
 
   return (
     <div
@@ -71,14 +82,26 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
     >
       {!isFullscreen && (
         <>
-          <EventBanner compact showLive />
+          <EventBanner compact showLive={isLive} />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-              <div className="live-badge flex items-center gap-2 text-[10px] uppercase tracking-widest text-red-500 sm:text-sm">
-                <span className="live-dot h-2 w-2 rounded-full bg-red-500 sm:h-3 sm:w-3" />
-                Live broadcast in progress
+              <div
+                className={`flex items-center gap-2 text-[10px] uppercase tracking-widest sm:text-sm ${
+                  isLive ? 'live-badge text-red-500' : 'text-gray-500'
+                }`}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full sm:h-3 sm:w-3 ${
+                    isLive
+                      ? 'live-dot bg-red-500'
+                      : isBeforeStart
+                        ? 'bg-zinc-600'
+                        : 'animate-pulse bg-amber-500'
+                  }`}
+                />
+                {statusLabel}
               </div>
-              <ViewerCount session={session} onCountChange={setViewerCount} />
+              {isLive && <ViewerCount session={session} onCountChange={setViewerCount} />}
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2">
@@ -143,11 +166,16 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
                 : ''
           }`}
         >
-          <StreamPlayer
-            src={streamUrl}
-            fill={isFullscreen}
-            onRequestFullscreen={isFullscreen ? undefined : handleEnterFullscreen}
-          />
+          {showOfflinePlaceholder ? (
+            <StreamOffline variant="scheduled" fill={isFullscreen} />
+          ) : (
+            <StreamPlayer
+              src={streamUrl}
+              fill={isFullscreen}
+              onLiveChange={setIsLive}
+              onRequestFullscreen={isFullscreen ? undefined : handleEnterFullscreen}
+            />
+          )}
         </div>
 
         {!isFullscreen && (
@@ -160,7 +188,18 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
                   : ''
             }`}
           >
-            <LiveChat session={session} viewerCount={viewerCount} />
+            {showOfflinePlaceholder || showWaiting ? (
+              <div className="flex h-72 flex-col items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/60 px-6 text-center sm:h-80 lg:h-[min(70vh,520px)]">
+                <p className="text-sm font-semibold text-gray-300">Chat opens when the stream goes live</p>
+                <p className="mt-2 text-xs text-gray-500">
+                  {isBeforeStart
+                    ? 'Come back at the scheduled start time.'
+                    : 'Hang tight — the broadcast should begin shortly.'}
+                </p>
+              </div>
+            ) : (
+              <LiveChat session={session} viewerCount={viewerCount} />
+            )}
           </div>
         )}
       </div>

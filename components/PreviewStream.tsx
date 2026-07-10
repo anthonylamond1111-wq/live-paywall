@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import StreamPlayer from '@/components/StreamPlayer';
+import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import { PREVIEW_SECONDS } from '@/lib/constants';
 
 const PREVIEW_START_KEY = 'ufc_preview_started_at';
@@ -29,6 +30,7 @@ export default function PreviewStream() {
   const [remaining, setRemaining] = useState(PREVIEW_SECONDS);
   const [expired, setExpired] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { isBeforeStart } = useStreamSchedule();
 
   useEffect(() => {
     let active = true;
@@ -95,7 +97,11 @@ export default function PreviewStream() {
           <p className="text-xs font-semibold uppercase tracking-wider text-red-400">
             Free preview
           </p>
-          <p className="text-sm text-gray-400">Sample of tonight&apos;s live broadcast</p>
+          <p className="text-sm text-gray-400">
+            {isBeforeStart
+              ? 'Preview available when the stream goes live'
+              : "Sample of tonight's live broadcast"}
+          </p>
         </div>
         {!expired && !loading && (
           <div
@@ -118,7 +124,14 @@ export default function PreviewStream() {
           </div>
         )}
 
-        {!loading && previewUrl && !expired && <StreamPlayer src={previewUrl} />}
+        {!loading && isBeforeStart && !expired && (
+          <StreamOffline
+            variant="scheduled"
+            subtitle="The free preview will be available here when the broadcast begins."
+          />
+        )}
+
+        {!loading && previewUrl && !expired && !isBeforeStart && <StreamPlayer src={previewUrl} />}
 
         {!loading && expired && (
           <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-black px-6 text-center">
@@ -134,7 +147,7 @@ export default function PreviewStream() {
           </div>
         )}
 
-        {!loading && !expired && previewUrl && (
+        {!loading && !expired && previewUrl && !isBeforeStart && (
           <>
             <div className="pointer-events-none absolute left-3 top-3 rounded-lg bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wider text-gray-300 backdrop-blur-sm">
               Preview only

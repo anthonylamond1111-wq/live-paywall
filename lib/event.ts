@@ -45,3 +45,7 @@ export function getEventCountdown() {
     seconds: Math.floor((diff / 1000) % 60),
   };
 }
+
+export function hasStreamStarted(): boolean {
+  return !getEventCountdown().isBeforeEvent;
+}

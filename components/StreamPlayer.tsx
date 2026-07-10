@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
+import { hasStreamStarted } from '@/lib/event';
 
 type QualityLevel = {
   index: number;
@@ -12,14 +13,16 @@ type StreamPlayerProps = {
   src: string;
   fill?: boolean;
   onRequestFullscreen?: () => void;
+  onLiveChange?: (live: boolean) => void;
 };
 
-export default function StreamPlayer({ src, fill = false, onRequestFullscreen }: StreamPlayerProps) {
+export default function StreamPlayer({ src, fill = false, onRequestFullscreen, onLiveChange }: StreamPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [error, setError] = useState('');
+  const [errorTitle, setErrorTitle] = useState('Stream unavailable');
   const [muted, setMuted] = useState(true);
   const [showUnmute, setShowUnmute] = useState(true);
   const [playing, setPlaying] = useState(false);
@@ -49,6 +52,8 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen }:
     if (!video || !src) return;
 
     setError('');
+    setErrorTitle('Stream unavailable');
+    onLiveChange?.(false);
     setShowUnmute(true);
     setMuted(true);
     video.muted = true;
@@ -72,6 +77,7 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen }:
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
         setError('');
+        onLiveChange?.(true);
         const qualityLevels: QualityLevel[] = data.levels.map((level, index) => ({
           index,
           label: level.height ? `${level.height}p` : `Level ${index + 1}`,
@@ -89,7 +95,13 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen }:
         if (!data.fatal) return;
 
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          setError('Reconnecting to live stream…');
+          onLiveChange?.(false);
+          setErrorTitle(hasStreamStarted() ? 'Broadcast not live yet' : 'Stream has not started yet');
+          setError(
+            hasStreamStarted()
+              ? 'Waiting for the broadcast to begin. This page will connect automatically.'
+              : 'The stream is not live yet. Check back at the scheduled start time.'
+          );
           hls?.startLoad();
           return;
         }
@@ -99,7 +111,9 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen }:
           return;
         }
 
-        setError('Stream offline — refresh when OBS is live.');
+        onLiveChange?.(false);
+        setErrorTitle('Broadcast not live yet');
+        setError('The stream has not started. Refresh this page when the broadcast goes live.');
         hls?.destroy();
       });
 
@@ -120,7 +134,7 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen }:
     }
 
     setError('This browser does not support live stream playback.');
-  }, [src]);
+  }, [src, onLiveChange]);
 
   const handleUnmute = () => {
     const video = videoRef.current;
@@ -210,8 +224,14 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen }:
 
       {error && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/90 px-6 text-center">
-          <p className="mb-2 text-lg font-semibold text-white">Stream unavailable</p>
+          <p className="mb-2 text-lg font-semibold text-white">{errorTitle}</p>
           <p className="text-sm text-gray-400">{error}</p>
+          {errorTitle.includes('not live') && (
+            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+              Checking for signal…
+            </div>
+          )}
         </div>
       )}
 

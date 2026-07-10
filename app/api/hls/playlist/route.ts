@@ -33,6 +33,13 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const target = searchParams.get('url') ?? STREAM_URL;
 
+  if (!target) {
+    return NextResponse.json(
+      { error: 'Stream not configured. Set LIVEPEER_PLAYBACK_ID on Railway.' },
+      { status: 500 }
+    );
+  }
+
   if (!isAllowedUrl(target)) {
     return NextResponse.json({ error: 'Invalid stream URL' }, { status: 400 });
   }

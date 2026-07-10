@@ -112,3 +112,31 @@ body {
   color: transparent;
   animation: brand-flow 5s linear infinite;
 }
+
+.fight-hero-name {
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-shadow: 0 0 40px rgba(220, 38, 38, 0.25);
+}
+
+.fight-hero-bg-name {
+  font-size: clamp(3rem, 12vw, 7rem);
+  font-weight: 900;
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  color: white;
+}
+
+@keyframes hero-vs-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(239, 68, 68, 0.55);
+  }
+}
+
+.fight-hero-vs {
+  animation: hero-vs-pulse 2.5s ease-in-out infinite;
+}

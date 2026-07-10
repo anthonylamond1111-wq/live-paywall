@@ -326,12 +326,11 @@ export default function UFCAccess() {
           view === 'stream' ? 'max-w-6xl pb-6 pt-24 sm:pt-28' : 'pb-10 pt-24 sm:pb-20 sm:pt-28'
         }`}
       >
-        {showEvent && <EventBanner />}
+        {(showAuthGate || showEvent) && <FighterHero compact={showEvent && !showAuthGate} />}
         {(showAuthGate || view === 'pay' || view === 'success') && (
           <JourneyProgress current={journeyStep} />
         )}
 
-        {showAuthGate && <FighterHero />}
         {(showAuthGate || view === 'pay') && <EventCountdown />}
         {showAuthGate && <NotifyWhenLive />}
 

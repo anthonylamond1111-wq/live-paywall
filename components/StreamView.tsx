@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import StreamPlayer, { useStreamFullscreen } from '@/components/StreamPlayer';
 import LiveChat from '@/components/LiveChat';
-import FighterHero from '@/components/FighterHero';
 import FightInfo from '@/components/FightInfo';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import BrandLogo from '@/components/BrandLogo';
@@ -89,7 +88,6 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
       {!isFullscreen && (
         <>
           <LiveUpdateBanner />
-          <FighterHero compact />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
               <div

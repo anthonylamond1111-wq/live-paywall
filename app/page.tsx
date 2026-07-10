@@ -325,7 +325,7 @@ export default function UFCAccess() {
           view === 'stream' ? 'max-w-6xl pb-6 pt-24 sm:pt-28' : 'pb-10 pt-24 sm:pb-20 sm:pt-28'
         }`}
       >
-        {(showAuthGate || showEvent) && <FighterHero compact={showEvent && !showAuthGate} />}
+        {showEvent && <FighterHero compact />}
         {(showAuthGate || view === 'pay' || view === 'success') && (
           <JourneyProgress current={journeyStep} />
         )}

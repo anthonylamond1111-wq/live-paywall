@@ -68,12 +68,11 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
 
   const isFullscreen = playerMode === 'fullscreen';
   const isTheatre = playerMode === 'theatre';
-  const showOfflinePlaceholder = isBeforeStart;
 
-  const statusLabel = isBeforeStart
-    ? 'Stream has not started yet'
-    : isLive
-      ? 'Live broadcast in progress'
+  const statusLabel = isLive
+    ? 'Live broadcast in progress'
+    : isBeforeStart
+      ? 'Stream has not started yet'
       : 'Waiting for broadcast';
 
   return (
@@ -166,7 +165,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
         }
       >
         <div
-          className={`min-w-0 ${
+          className={`relative min-w-0 ${
             isFullscreen
               ? 'h-full min-h-0'
               : mobileTab === 'chat'
@@ -174,16 +173,24 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
                 : ''
           }`}
         >
-          {showOfflinePlaceholder ? (
-            <StreamOffline variant="scheduled" fill={isFullscreen} />
-          ) : (
-            <StreamPlayer
-              src={streamUrl}
-              fill={isFullscreen}
-              onLiveChange={setIsLive}
-              onHealthChange={setHealth}
-              onRequestFullscreen={isFullscreen ? undefined : handleEnterFullscreen}
-            />
+          <StreamPlayer
+            src={streamUrl}
+            fill={isFullscreen}
+            onLiveChange={setIsLive}
+            onHealthChange={setHealth}
+            onRequestFullscreen={isFullscreen ? undefined : handleEnterFullscreen}
+          />
+          {!isLive && (
+            <div
+              className={`absolute inset-0 z-10 overflow-hidden ${
+                isFullscreen ? 'rounded-none' : 'rounded-2xl sm:rounded-3xl'
+              }`}
+            >
+              <StreamOffline
+                variant={isBeforeStart ? 'scheduled' : 'waiting'}
+                fill={isFullscreen}
+              />
+            </div>
           )}
         </div>
 
@@ -201,7 +208,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
               session={session}
               viewerCount={viewerCount}
               streamLive={isLive}
-              beforeStreamStart={isBeforeStart}
+              beforeStreamStart={!isLive}
             />
           </div>
         )}

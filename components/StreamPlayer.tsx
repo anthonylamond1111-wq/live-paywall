@@ -63,9 +63,20 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
 
     let hls: Hls | null = null;
 
+    const signalLiveIfPicture = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        setError('');
+        onLiveChange?.(true);
+        onHealthChange?.('good');
+      }
+    };
+
     const startPlayback = () => {
       void video.play().catch(() => {});
     };
+
+    video.addEventListener('loadeddata', signalLiveIfPicture);
+    video.addEventListener('playing', signalLiveIfPicture);
 
     if (Hls.isSupported()) {
       hls = new Hls({
@@ -79,9 +90,6 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
-        setError('');
-        onLiveChange?.(true);
-        onHealthChange?.('good');
         const qualityLevels: QualityLevel[] = data.levels.map((level, index) => ({
           index,
           label: level.height ? `${level.height}p` : `Level ${index + 1}`,
@@ -124,6 +132,8 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
       });
 
       return () => {
+        video.removeEventListener('loadeddata', signalLiveIfPicture);
+        video.removeEventListener('playing', signalLiveIfPicture);
         hls?.destroy();
         hlsRef.current = null;
       };
@@ -133,12 +143,16 @@ export default function StreamPlayer({ src, fill = false, onRequestFullscreen, o
       video.src = src;
       video.addEventListener('loadedmetadata', startPlayback);
       return () => {
+        video.removeEventListener('loadeddata', signalLiveIfPicture);
+        video.removeEventListener('playing', signalLiveIfPicture);
         video.removeEventListener('loadedmetadata', startPlayback);
         video.removeAttribute('src');
         video.load();
       };
     }
 
+    video.removeEventListener('loadeddata', signalLiveIfPicture);
+    video.removeEventListener('playing', signalLiveIfPicture);
     setError('This browser does not support live stream playback.');
   }, [src, onLiveChange, onHealthChange]);
 

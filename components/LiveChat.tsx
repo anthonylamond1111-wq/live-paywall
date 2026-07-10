@@ -39,6 +39,18 @@ function isReactionOnly(body: string) {
   return QUICK_REACTIONS.includes(body.trim());
 }
 
+async function chatFetch(session: Session, init?: RequestInit) {
+  return fetch('/api/chat', {
+    ...init,
+    credentials: 'include',
+    headers: {
+      ...init?.headers,
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
 export default function LiveChat({
   session,
   viewerCount,
@@ -65,9 +77,6 @@ export default function LiveChat({
   }, []);
 
   const sendMessage = async (body: string) => {
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
-
     const trimmed = body.trim();
     if (!trimmed || sending) return;
 
@@ -80,51 +89,65 @@ export default function LiveChat({
     setSending(true);
     setError('');
 
-    const { error: insertError } = await supabase.from('chat_messages').insert({
-      user_id: session.user.id,
-      display_name: displayNameFromEmail(session.user.email),
-      body: trimmed.slice(0, MAX_MESSAGE_LENGTH),
-    });
+    try {
+      const res = await chatFetch(session, {
+        method: 'POST',
+        body: JSON.stringify({ body: trimmed.slice(0, MAX_MESSAGE_LENGTH) }),
+      });
 
-    if (insertError) {
-      setError(insertError.message);
-    } else {
-      setDraft('');
-      setLastSentAt(now);
-    }
+      const data = await res.json();
 
-    setSending(false);
-  };
-
-  useEffect(() => {
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
-
-    let active = true;
-
-    const loadMessages = async () => {
-      const { data, error: fetchError } = await supabase
-        .from('chat_messages')
-        .select('id, user_id, display_name, body, created_at')
-        .order('created_at', { ascending: true })
-        .limit(MESSAGE_LIMIT);
-
-      if (!active) return;
-
-      if (fetchError) {
-        setError('Chat could not load. Make sure chat is set up in Supabase.');
-        setReady(true);
+      if (!res.ok) {
+        setError(data.error ?? 'Could not send message.');
         return;
       }
 
-      setMessages(data ?? []);
-      setReady(true);
+      if (data.message) {
+        appendMessage(data.message as ChatMessage);
+      }
+
+      setDraft('');
+      setLastSentAt(now);
+    } catch {
+      setError('Could not send message. Check your connection.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    const loadMessages = async () => {
+      try {
+        const res = await chatFetch(session);
+        const data = await res.json();
+
+        if (!active) return;
+
+        if (!res.ok) {
+          setError(data.error ?? 'Chat could not load.');
+          setReady(true);
+          return;
+        }
+
+        setMessages(data.messages ?? []);
+        setReady(true);
+      } catch {
+        if (active) {
+          setError('Chat could not load. Check your connection.');
+          setReady(true);
+        }
+      }
     };
 
     void loadMessages();
 
+    const supabase = getSupabaseClient();
+    if (!supabase) return () => { active = false; };
+
     const channel = supabase
-      .channel('live-chat')
+      .channel(`live-chat-${session.user.id}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
@@ -138,7 +161,7 @@ export default function LiveChat({
       active = false;
       void supabase.removeChannel(channel);
     };
-  }, [appendMessage]);
+  }, [appendMessage, session]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

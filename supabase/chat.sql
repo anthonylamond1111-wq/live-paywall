@@ -41,6 +41,11 @@ create policy "Paid users can post chat"
 
 -- Enable realtime: Supabase Dashboard → Database → Replication → chat_messages
 -- Or run (if not already on publication):
--- alter publication supabase_realtime add table public.chat_messages;
+do $$
+begin
+  alter publication supabase_realtime add table public.chat_messages;
+exception
+  when duplicate_object then null;
+end $$;
 
 alter table public.chat_messages replica identity full;

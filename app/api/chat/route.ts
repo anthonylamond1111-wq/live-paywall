@@ -5,16 +5,11 @@ import {
   getUserFromRequest,
   resolveUserAccess,
 } from '@/lib/supabase/server';
+import { chatDisplayName } from '@/lib/chat-display';
 
 export const dynamic = 'force-dynamic';
 
 const MESSAGE_LIMIT = 100;
-
-function displayNameFromEmail(email?: string | null) {
-  if (!email) return 'Viewer';
-  const local = email.split('@')[0] ?? 'Viewer';
-  return local.slice(0, 20);
-}
 
 async function requirePaidUser(request: Request) {
   const user = await getUserFromRequest(request);
@@ -84,7 +79,7 @@ export async function POST(request: Request) {
     .from('chat_messages')
     .insert({
       user_id: user.id,
-      display_name: displayNameFromEmail(user.email),
+      display_name: chatDisplayName(user.email),
       body: text,
     })
     .select('id, user_id, display_name, body, created_at')

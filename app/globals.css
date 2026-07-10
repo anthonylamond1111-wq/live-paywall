@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,15 +12,74 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes brand-intro-fade {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes brand-intro-line {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 6rem;
+    opacity: 1;
+  }
+}
+
+.live-dot {
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+
+.live-badge {
+  box-shadow: 0 0 20px rgba(220, 38, 38, 0.15);
+}
+
+.brand-intro {
+  animation: brand-intro-fade 2.2s ease forwards;
+}
+
+.brand-intro-logo {
+  animation: brand-intro-fade 2.2s ease forwards;
+}
+
+.brand-intro-line {
+  animation: brand-intro-line 0.8s ease 0.3s forwards;
+  width: 0;
+}
+
+.brand-intro-tag {
+  animation: brand-intro-fade 2.2s ease forwards;
 }

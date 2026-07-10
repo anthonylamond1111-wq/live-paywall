@@ -86,8 +86,10 @@ export default function PreviewStream() {
     return () => window.clearInterval(timer);
   }, [expired, previewUrl]);
 
+  const urgent = remaining <= 15 && !expired;
+
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-red-600/50 bg-zinc-900 sm:rounded-3xl">
+    <div className="relative overflow-hidden rounded-2xl border border-red-600/50 bg-zinc-900/90 shadow-lg shadow-red-900/10 sm:rounded-3xl">
       <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-red-400">
@@ -96,16 +98,23 @@ export default function PreviewStream() {
           <p className="text-sm text-gray-400">Sample of tonight&apos;s live broadcast</p>
         </div>
         {!expired && !loading && (
-          <div className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-mono text-red-300">
-            {formatCountdown(remaining)}
+          <div
+            className={`rounded-full px-3 py-1.5 text-xs font-mono font-semibold ${
+              urgent
+                ? 'animate-pulse bg-red-500/20 text-red-300 ring-1 ring-red-500/50'
+                : 'bg-red-500/10 text-red-300'
+            }`}
+          >
+            {formatCountdown(remaining)} left
           </div>
         )}
       </div>
 
       <div className="relative">
         {loading && (
-          <div className="flex aspect-video items-center justify-center bg-black text-sm text-gray-500">
-            Loading preview…
+          <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-black">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+            <p className="text-sm text-gray-500">Loading preview…</p>
           </div>
         )}
 
@@ -113,7 +122,11 @@ export default function PreviewStream() {
 
         {!loading && expired && (
           <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-black px-6 text-center">
-            <div className="text-3xl">🔒</div>
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10">
+              <svg className="h-7 w-7 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
             <p className="text-lg font-semibold text-white">Preview ended</p>
             <p className="max-w-sm text-sm text-gray-400">
               Create an account below to unlock the official stream and live chat.
@@ -122,9 +135,18 @@ export default function PreviewStream() {
         )}
 
         {!loading && !expired && previewUrl && (
-          <div className="absolute bottom-3 left-3 rounded-lg bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wider text-gray-300">
-            Preview only
-          </div>
+          <>
+            <div className="pointer-events-none absolute left-3 top-3 rounded-lg bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wider text-gray-300 backdrop-blur-sm">
+              Preview only
+            </div>
+            {urgent && (
+              <div className="pointer-events-none absolute inset-x-0 top-12 flex justify-center">
+                <div className="rounded-full bg-red-600/90 px-4 py-1.5 text-xs font-semibold text-white shadow-lg">
+                  Preview ends in {formatCountdown(remaining)} — sign up to keep watching
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

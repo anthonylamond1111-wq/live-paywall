@@ -21,7 +21,9 @@ import StickyUnlockCta from '@/components/StickyUnlockCta';
 import StreamView from '@/components/StreamView';
 import SuccessScreen from '@/components/SuccessScreen';
 import VisitorHeartbeat from '@/components/VisitorHeartbeat';
+import Link from 'next/link';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { isSiteAdmin } from '@/lib/site-admin';
 import { claimActiveSession, SINGLE_DEVICE_SIGNOUT_MESSAGE } from '@/lib/claim-active-session';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
@@ -491,6 +493,7 @@ export default function UFCAccess() {
   }, [handleCheckout]);
 
   const isLoggedIn = !!session;
+  const isOwner = isSiteAdmin(session?.user.email);
   const showAuthGate = !isLoggedIn || view === 'auth';
   const showHero = showAuthGate || view === 'pay' || view === 'success';
   const showFooter = view !== 'stream';
@@ -532,6 +535,14 @@ export default function UFCAccess() {
               <div className="text-[10px] font-mono tracking-widest text-red-500 sm:text-sm">
                 AUTHORIZED
               </div>
+            )}
+            {isOwner && (
+              <Link
+                href="/admin"
+                className="text-[10px] font-medium text-red-400/90 transition hover:text-red-300 sm:text-xs"
+              >
+                Stats
+              </Link>
             )}
             {session && (
               <button

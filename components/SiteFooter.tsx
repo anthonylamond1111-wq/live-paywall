@@ -1,3 +1,5 @@
+import DiscordHelpLink from '@/components/DiscordHelpLink';
+
 export default function SiteFooter() {
   const year = new Date().getFullYear();
 
@@ -6,7 +8,8 @@ export default function SiteFooter() {
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
         UFC ACCESS
       </p>
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-gray-500">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-gray-500">
+        <DiscordHelpLink />
         <a href="/support" className="transition hover:text-red-400">
           Support
         </a>

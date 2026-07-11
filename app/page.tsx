@@ -5,7 +5,9 @@ import type { Session } from '@supabase/supabase-js';
 import AddToHomeScreen from '@/components/AddToHomeScreen';
 import BrandIntro from '@/components/BrandIntro';
 import BrandLogo from '@/components/BrandLogo';
+import DiscordHelpLink from '@/components/DiscordHelpLink';
 import FAQ from '@/components/FAQ';
+import EventCountdown from '@/components/EventCountdown';
 import FightNightLanding from '@/components/FightNightLanding';
 import { LANDING_FUNNEL_WIDTH } from '@/components/LandingFunnel';
 import LandingFunnel from '@/components/LandingFunnel';
@@ -499,6 +501,7 @@ export default function UFCAccess() {
                 Sign out
               </button>
             )}
+            <DiscordHelpLink compact className="hidden sm:inline-flex" />
           </div>
         </div>
       </nav>
@@ -550,6 +553,7 @@ export default function UFCAccess() {
 
         {view === 'pay' && isLoggedIn && (
           <div className={`${LANDING_FUNNEL_WIDTH} space-y-5 pb-20 sm:space-y-6`}>
+            <EventCountdown />
             <PreviewStream
               onPreviewExpired={() => setPreviewExpired(true)}
               onPreviewLiveChange={setPreviewLive}

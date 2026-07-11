@@ -68,26 +68,29 @@ export default function LandingFunnel({
   return (
     <>
       <div className={`${LANDING_FUNNEL_WIDTH} space-y-5 pb-20 sm:space-y-6`}>
-        <header className="border-b border-red-600/20 pb-5 text-center">
+        <header className="border-b border-red-600/20 pb-4 text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-500 sm:text-xs">
             {EVENT.number} • {EVENT.tagline}
           </p>
-          <h1 className="fight-hero-name mt-3 text-3xl text-white sm:text-4xl">
+          <h1 className="fight-hero-name mt-2 text-3xl text-white sm:text-4xl">
             {EVENT.fighter1}
             <span className="mx-2 text-lg font-bold text-red-500 sm:text-xl">VS</span>
             {EVENT.fighter2}
           </h1>
-          <p className="mt-2 text-sm text-gray-500">{EVENT.venue}</p>
-          <p className="mt-3 text-sm text-gray-400">
-            Free 60-second preview — then pay once to keep watching
-          </p>
-          <div className="mt-4 flex justify-center">
-            <ShareButton
-              variant="promo"
-              className="rounded-full border border-zinc-700 bg-zinc-900/60 px-4 py-2 text-xs font-medium text-gray-300 transition hover:border-red-500 hover:text-white sm:text-sm"
-            />
-          </div>
+          <p className="mt-1.5 text-sm text-gray-500">{EVENT.venue}</p>
         </header>
+
+        <EventCountdown />
+
+        <p className="text-center text-sm text-gray-400">
+          Free 60-second preview — then pay once to keep watching
+        </p>
+        <div className="flex justify-center">
+          <ShareButton
+            variant="promo"
+            className="rounded-full border border-zinc-700 bg-zinc-900/60 px-4 py-2 text-xs font-medium text-gray-300 transition hover:border-red-500 hover:text-white sm:text-sm"
+          />
+        </div>
 
         <JourneyProgress current="preview" onDark />
 
@@ -205,7 +208,6 @@ export default function LandingFunnel({
           )}
         </div>
 
-        <EventCountdown />
         <NotifyWhenLive />
         <FreeVsPaid />
         <FAQ />

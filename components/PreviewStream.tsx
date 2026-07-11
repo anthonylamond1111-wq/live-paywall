@@ -164,35 +164,36 @@ export default function PreviewStream({
   const previewActive = isLive && !expired && countdownActive;
 
   return (
-    <div className="preview-frame group relative overflow-hidden rounded-2xl sm:rounded-3xl">
-      <div className="preview-frame-inner">
-        <div className="flex items-center justify-between border-b border-white/5 bg-gradient-to-r from-zinc-900/95 via-zinc-900/80 to-zinc-900/95 px-4 py-3.5 sm:px-5">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="preview-live-dot h-2 w-2 rounded-full bg-red-500" />
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-400">
-                Free preview
-              </p>
-            </div>
-            <p className="mt-1 text-sm text-gray-400">
-              {previewActive
-                ? '60 seconds free — see the live stream for yourself'
-                : 'Free preview starts when the broadcast goes live'}
+    <div className="group relative">
+      <div className="mb-3 flex items-center justify-between px-1 sm:mb-4 sm:px-0">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="preview-live-dot h-2 w-2 rounded-full bg-red-500" />
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-400">
+              Free preview
             </p>
           </div>
-          {previewActive && !loading && (
-            <div
-              className={`rounded-full px-3 py-1.5 text-xs font-mono font-semibold tabular-nums ${
-                urgent
-                  ? 'animate-pulse bg-red-500/25 text-red-200 ring-1 ring-red-500/60'
-                  : 'bg-red-500/10 text-red-300 ring-1 ring-red-500/20'
-              }`}
-            >
-              {formatCountdown(remaining)} left
-            </div>
-          )}
+          <p className="mt-1 text-sm text-gray-400">
+            {previewActive
+              ? '60 seconds free — see the live stream for yourself'
+              : 'Free preview starts when the broadcast goes live'}
+          </p>
         </div>
+        {previewActive && !loading && (
+          <div
+            className={`rounded-full px-3 py-1.5 text-xs font-mono font-semibold tabular-nums ${
+              urgent
+                ? 'animate-pulse bg-red-500/25 text-red-200 ring-1 ring-red-500/60'
+                : 'bg-red-500/10 text-red-300 ring-1 ring-red-500/20'
+            }`}
+          >
+            {formatCountdown(remaining)} left
+          </div>
+        )}
+      </div>
 
+      <div className="preview-frame relative overflow-hidden rounded-2xl sm:rounded-3xl">
+        <div className="preview-frame-inner">
         <div className="relative bg-black">
           {loading && (
             <div className="flex aspect-video flex-col items-center justify-center gap-4 bg-gradient-to-b from-zinc-950 to-black">
@@ -267,6 +268,7 @@ export default function PreviewStream({
               )}
             </>
           )}
+        </div>
         </div>
       </div>
     </div>

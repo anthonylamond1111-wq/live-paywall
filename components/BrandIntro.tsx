@@ -1,56 +1,40 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import BrandLogo from '@/components/BrandLogo';
-import {
-  playBrandIntroSound,
-  preloadIntroSound,
-  waitForIntroSoundEnd,
-} from '@/lib/intro-sound';
+import { playBrandIntroSound, preloadIntroSound } from '@/lib/intro-sound';
 
-const INTRO_KEY = 'ufc_access_intro_seen_v3';
+const INTRO_KEY = 'ufc_access_intro_seen_v4';
+const SPLASH_MS = 4000;
 
 export default function BrandIntro() {
   const [visible, setVisible] = useState(false);
   const [needsTap, setNeedsTap] = useState(false);
-  const runningRef = useRef(false);
 
-  const finishIntro = useCallback(() => {
+  const hideSplash = useCallback(() => {
     sessionStorage.setItem(INTRO_KEY, '1');
     setVisible(false);
     setNeedsTap(false);
   }, []);
-
-  const runIntro = useCallback(
-    async (fromUserGesture: boolean) => {
-      if (runningRef.current) return;
-      runningRef.current = true;
-      setNeedsTap(false);
-
-      const started = await playBrandIntroSound(fromUserGesture);
-      if (!started) {
-        runningRef.current = false;
-        setNeedsTap(true);
-        return;
-      }
-
-      await waitForIntroSoundEnd();
-      finishIntro();
-      runningRef.current = false;
-    },
-    [finishIntro]
-  );
 
   useEffect(() => {
     if (sessionStorage.getItem(INTRO_KEY) === '1') return;
 
     setVisible(true);
     preloadIntroSound();
-    void runIntro(false);
-  }, [runIntro]);
+
+    void playBrandIntroSound(false).then((started) => {
+      if (!started) setNeedsTap(true);
+    });
+
+    const timer = window.setTimeout(hideSplash, SPLASH_MS);
+    return () => window.clearTimeout(timer);
+  }, [hideSplash]);
 
   const handleEnter = () => {
-    void runIntro(true);
+    void playBrandIntroSound(true).then((started) => {
+      if (started) setNeedsTap(false);
+    });
   };
 
   if (!visible) return null;
@@ -70,7 +54,7 @@ export default function BrandIntro() {
         </p>
         {needsTap && (
           <p className="intro-tap-hint mt-8 text-[11px] font-semibold uppercase tracking-[0.35em] text-red-400/90">
-            Tap to enter
+            Tap to start sound
           </p>
         )}
       </div>

@@ -61,7 +61,8 @@ async function playCustomIntroSound(fromUserGesture: boolean): Promise<HTMLAudio
 
   const audio = preloadedAudio ?? new Audio(INTRO_SOUND_URL);
   audio.volume = INTRO_SOUND_VOLUME;
-  if (audio.ended || audio.currentTime > 0) {
+
+  if (!activeAudio || activeAudio.ended) {
     audio.currentTime = 0;
   }
 

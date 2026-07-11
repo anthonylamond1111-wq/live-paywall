@@ -33,8 +33,8 @@ export const INTRO_SOUND_VOLUME = Math.min(
   Math.max(0, Number(process.env.NEXT_PUBLIC_INTRO_SOUND_VOLUME ?? '0.85'))
 );
 
-/** Max HLS rung served to players — 720 matches ~4000 kbps OBS without buffering */
+/** Max HLS quality height — default 1080p; set NEXT_PUBLIC_MAX_STREAM_HEIGHT to cap lower */
 export const MAX_STREAM_HEIGHT = Math.max(
   360,
-  Number(process.env.NEXT_PUBLIC_MAX_STREAM_HEIGHT ?? '720')
+  Number(process.env.NEXT_PUBLIC_MAX_STREAM_HEIGHT ?? '1080')
 );

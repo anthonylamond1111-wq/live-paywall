@@ -34,7 +34,14 @@ export function pickLevelByHeight(
 }
 
 export function getMaxAutoLevelIndex(levels: Level[]): number {
-  return pickLevelByHeight(levels, MAX_STREAM_HEIGHT, true);
+  let best = 0;
+  for (let i = 0; i < levels.length; i++) {
+    const height = levels[i].height ?? 0;
+    if (height <= MAX_STREAM_HEIGHT && height >= (levels[best].height ?? 0)) {
+      best = i;
+    }
+  }
+  return best;
 }
 
 export function getBufferedAheadSeconds(video: HTMLVideoElement): number {
@@ -62,12 +69,12 @@ export function createStreamHlsConfig() {
     maxMaxBufferLength: 60,
     maxBufferSize: 50 * 1000 * 1000,
     maxBufferHole: 0.5,
-    capLevelToPlayerSize: true,
+    capLevelToPlayerSize: isMobileDevice(),
     capLevelOnFPSDrop: true,
     testBandwidth: true,
-    abrEwmaDefaultEstimate: isMobileDevice() ? 1_800_000 : 2_500_000,
-    abrBandWidthFactor: 0.85,
-    abrBandWidthUpFactor: 0.6,
+    abrEwmaDefaultEstimate: isMobileDevice() ? 2_000_000 : 5_000_000,
+    abrBandWidthFactor: 0.9,
+    abrBandWidthUpFactor: 0.7,
     abrMaxWithRealBitrate: true,
     fragLoadingMaxRetry: 8,
     manifestLoadingMaxRetry: 4,
@@ -80,8 +87,11 @@ export function getSafeStartLevel(levels: Level[]): number {
   return pickLevelByHeight(levels, Math.min(target, MAX_STREAM_HEIGHT), true);
 }
 
-/** Drop renditions above MAX_STREAM_HEIGHT from a multivariant master playlist. */
+export const QUALITY_RAMP_BUFFER_SECONDS = 12;
+
+/** Drop renditions above maxHeight from a multivariant master playlist. */
 export function capPlaylistResolutions(body: string, maxHeight: number): string {
+  if (maxHeight >= 1080) return body;
   const lines = body.split('\n');
   const result: string[] = [];
 

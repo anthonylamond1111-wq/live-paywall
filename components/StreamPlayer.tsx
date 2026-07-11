@@ -6,8 +6,10 @@ import { hasStreamStarted } from '@/lib/event';
 import { MAX_STREAM_HEIGHT } from '@/lib/constants';
 import {
   createStreamHlsConfig,
+  getBufferedAheadSeconds,
   getMaxAutoLevelIndex,
   getSafeStartLevel,
+  QUALITY_RAMP_BUFFER_SECONDS,
 } from '@/lib/hls-config';
 import type { StreamHealthStatus } from '@/components/StreamHealth';
 import CastToTvButton from '@/components/CastToTvButton';
@@ -54,6 +56,7 @@ export default function StreamPlayer({
   const hlsRef = useRef<Hls | null>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasLiveRef = useRef(false);
+  const qualityRampedRef = useRef(false);
 
   const [error, setError] = useState('');
   const [errorTitle, setErrorTitle] = useState('Stream unavailable');
@@ -132,6 +135,7 @@ export default function StreamPlayer({
 
   useEffect(() => {
     wasLiveRef.current = false;
+    qualityRampedRef.current = false;
   }, [src]);
 
   useEffect(() => {
@@ -194,6 +198,13 @@ export default function StreamPlayer({
       });
       hlsRef.current = hls;
 
+      const tryRampToFullQuality = () => {
+        if (!hls || qualityRampedRef.current) return;
+        if (getBufferedAheadSeconds(video) < QUALITY_RAMP_BUFFER_SECONDS) return;
+        hls.currentLevel = -1;
+        qualityRampedRef.current = true;
+      };
+
       hls.loadSource(src);
       hls.attachMedia(video);
 
@@ -217,7 +228,10 @@ export default function StreamPlayer({
         setReconnecting(false);
       });
 
-      hls.on(Hls.Events.FRAG_BUFFERED, syncToLiveEdge);
+      hls.on(Hls.Events.FRAG_BUFFERED, () => {
+        syncToLiveEdge();
+        tryRampToFullQuality();
+      });
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
         setCurrentLevel(data.level);
@@ -341,6 +355,7 @@ export default function StreamPlayer({
     const hls = hlsRef.current;
     if (!hls) return;
     hls.currentLevel = levelIndex;
+    qualityRampedRef.current = true;
     setCurrentLevel(levelIndex);
   };
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isSiteAdmin } from '@/lib/site-admin';
 import { ACTIVE_VISITOR_SECONDS } from '@/lib/visitor-session';
+import { GA_MEASUREMENT_ID } from '@/lib/constants';
 import { getUserFromRequest, getServiceSupabase } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
       supabase.from('notify_signups').select('*', { count: 'exact', head: true }),
     ]);
 
-  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? '';
+  const gaId = GA_MEASUREMENT_ID;
 
   return NextResponse.json({
     activeWindowSeconds: ACTIVE_VISITOR_SECONDS,

@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { hasStreamStarted } from '@/lib/event';
+import {
+  createStreamHlsConfig,
+  getBufferedAheadSeconds,
+  getSafeStartLevel,
+  QUALITY_RAMP_BUFFER_SECONDS,
+} from '@/lib/hls-config';
 import type { StreamHealthStatus } from '@/components/StreamHealth';
 import CastToTvButton from '@/components/CastToTvButton';
 import { detectCastMethod, isMobileDevice } from '@/lib/cast-to-tv';
@@ -48,6 +54,7 @@ export default function StreamPlayer({
   const hlsRef = useRef<Hls | null>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasLiveRef = useRef(false);
+  const qualityRampedRef = useRef(false);
 
   const [error, setError] = useState('');
   const [errorTitle, setErrorTitle] = useState('Stream unavailable');
@@ -126,6 +133,7 @@ export default function StreamPlayer({
 
   useEffect(() => {
     wasLiveRef.current = false;
+    qualityRampedRef.current = false;
   }, [src]);
 
   useEffect(() => {
@@ -166,18 +174,7 @@ export default function StreamPlayer({
     if (Hls.isSupported()) {
       const useProxy = src.includes('/api/hls/');
       hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 30,
-        liveSyncDurationCount: 4,
-        liveMaxLatencyDurationCount: 12,
-        maxLiveSyncPlaybackRate: 1.1,
-        maxBufferLength: 45,
-        maxMaxBufferLength: 90,
-        capLevelToPlayerSize: true,
-        abrEwmaDefaultEstimate: 2_500_000,
-        fragLoadingMaxRetry: 6,
-        manifestLoadingMaxRetry: 4,
+        ...createStreamHlsConfig(),
         xhrSetup: (xhr, url) => {
           if (useProxy && url.includes('/api/hls/')) {
             xhr.withCredentials = true;
@@ -189,6 +186,14 @@ export default function StreamPlayer({
       });
       hlsRef.current = hls;
 
+      const tryRampToMaxQuality = () => {
+        if (!hls || qualityRampedRef.current) return;
+        if (getBufferedAheadSeconds(video) < QUALITY_RAMP_BUFFER_SECONDS) return;
+
+        hls.currentLevel = -1;
+        qualityRampedRef.current = true;
+      };
+
       hls.loadSource(src);
       hls.attachMedia(video);
 
@@ -198,19 +203,29 @@ export default function StreamPlayer({
           label: level.height ? `${level.height}p` : `Level ${index + 1}`,
         }));
         setLevels(qualityLevels);
+        hls!.startLevel = getSafeStartLevel(data.levels);
+        hls!.autoLevelCapping = data.levels.length - 1;
         setCurrentLevel(hls?.currentLevel ?? -1);
         hls?.startLoad(-1);
         startPlayback();
         setReconnecting(false);
       });
 
-      hls.on(Hls.Events.FRAG_BUFFERED, syncToLiveEdge);
+      hls.on(Hls.Events.FRAG_BUFFERED, () => {
+        syncToLiveEdge();
+        tryRampToMaxQuality();
+      });
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
         setCurrentLevel(data.level);
       });
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+          onHealthChange?.('buffering');
+          return;
+        }
+
         if (!data.fatal) return;
 
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
@@ -319,6 +334,7 @@ export default function StreamPlayer({
     const hls = hlsRef.current;
     if (!hls) return;
     hls.currentLevel = levelIndex;
+    qualityRampedRef.current = true;
     setCurrentLevel(levelIndex);
   };
 

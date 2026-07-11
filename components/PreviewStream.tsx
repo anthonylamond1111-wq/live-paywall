@@ -17,9 +17,15 @@ function formatCountdown(seconds: number) {
 
 type PreviewStreamProps = {
   onPreviewExpired?: () => void;
+  onPreviewLiveChange?: (live: boolean) => void;
+  onUnlock?: () => void;
 };
 
-export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) {
+export default function PreviewStream({
+  onPreviewExpired,
+  onPreviewLiveChange,
+  onUnlock,
+}: PreviewStreamProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(PREVIEW_SECONDS);
   const [expired, setExpired] = useState(false);
@@ -68,10 +74,11 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
   const handleLiveChange = useCallback(
     (live: boolean) => {
       setIsLive(live);
+      onPreviewLiveChange?.(live);
       if (!live) return;
       void startPreviewTimer();
     },
-    [startPreviewTimer]
+    [onPreviewLiveChange, startPreviewTimer]
   );
 
   useEffect(() => {
@@ -236,12 +243,13 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
                   Create an account to unlock the official stream and live chat.
                 </p>
               </div>
-              <a
-                href="#signup"
+              <button
+                type="button"
+                onClick={onUnlock}
                 className="mt-1 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-gray-100"
               >
-                Create your account
-              </a>
+                Pay & watch live
+              </button>
             </div>
           )}
 

@@ -33,8 +33,8 @@ export default function PreviewConversion({
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-gray-400">
           {variant === 'expired'
-            ? 'Your 60-second preview ended. Create an account and pay once to keep watching live with chat.'
-            : 'Try 60 seconds of the live broadcast for free. No card required for the preview — pay only when you\'re ready for the full event.'}
+            ? 'Your 60-second preview ended. Pay once to keep watching live with chat.'
+            : 'Try 60 seconds of the live broadcast for free. Pay only when you\'re ready for the full event.'}
         </p>
         <p className="mt-3 text-lg font-semibold text-white">{CHECKOUT_LABEL}</p>
       </div>
@@ -53,7 +53,7 @@ export default function PreviewConversion({
         onClick={onUnlock}
         className="mt-5 w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985]"
       >
-        Unlock full stream
+        {CHECKOUT_LABEL}
       </button>
 
       <div className="mt-4 space-y-3">

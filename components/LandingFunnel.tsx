@@ -11,6 +11,7 @@ import PreviewConversion from '@/components/PreviewConversion';
 import PreviewStream from '@/components/PreviewStream';
 import ShareButton from '@/components/ShareButton';
 import StickyUnlockCta from '@/components/StickyUnlockCta';
+import { CHECKOUT_LABEL } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
@@ -24,6 +25,7 @@ type LandingFunnelProps = {
   message: string;
   busy: boolean;
   previewExpired: boolean;
+  previewLive: boolean;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onAuthModeToggle: () => void;
@@ -31,6 +33,7 @@ type LandingFunnelProps = {
   onSubmit: (e: FormEvent) => void;
   onUnlock: () => void;
   onPreviewExpired: () => void;
+  onPreviewLiveChange: (live: boolean) => void;
 };
 
 export default function LandingFunnel({
@@ -40,6 +43,7 @@ export default function LandingFunnel({
   message,
   busy,
   previewExpired,
+  previewLive,
   onEmailChange,
   onPasswordChange,
   onAuthModeToggle,
@@ -47,10 +51,11 @@ export default function LandingFunnel({
   onSubmit,
   onUnlock,
   onPreviewExpired,
+  onPreviewLiveChange,
 }: LandingFunnelProps) {
   const handleUnlock = () => {
     trackAnalytics(AnalyticsEvents.UNLOCK_CLICK, {
-      source: previewExpired ? 'expired' : 'funnel',
+      source: previewExpired ? 'expired' : previewLive ? 'live' : 'funnel',
     });
     onUnlock();
   };
@@ -74,7 +79,7 @@ export default function LandingFunnel({
           </h1>
           <p className="mt-2 text-sm text-gray-500">{EVENT.venue}</p>
           <p className="mt-3 text-sm text-gray-400">
-            Free 60-second preview — then unlock the full live stream
+            Free 60-second preview — then pay once to keep watching
           </p>
           <div className="mt-4 flex justify-center">
             <ShareButton
@@ -88,31 +93,64 @@ export default function LandingFunnel({
 
         <LiveUpdateBanner />
 
-        <PreviewStream onPreviewExpired={onPreviewExpired} />
+        <PreviewStream
+          onPreviewExpired={onPreviewExpired}
+          onPreviewLiveChange={onPreviewLiveChange}
+          onUnlock={handleUnlock}
+        />
 
         <PreviewConversion
           variant={previewExpired ? 'expired' : 'default'}
           onUnlock={handleUnlock}
         />
 
-        <EventCountdown />
-        <NotifyWhenLive />
-        <FreeVsPaid />
+        <div
+          id="quick-pay"
+          className="scroll-mt-28 rounded-2xl border-2 border-red-600/60 bg-gradient-to-b from-zinc-900 to-black p-6 shadow-lg shadow-red-900/10 sm:rounded-3xl sm:p-8"
+        >
+          <h2 className="text-center text-2xl font-bold text-white">Pay & watch live</h2>
+          <p className="mt-2 text-center text-sm text-gray-400">
+            {previewExpired
+              ? 'Your preview ended. Enter your email and checkout — Apple Pay & cards accepted.'
+              : 'Skip the wait — enter your email and go straight to secure checkout.'}
+          </p>
+
+          {message && <p className="mt-4 text-center text-sm text-red-400">{message}</p>}
+
+          <div className="mt-5 space-y-3">
+            <input
+              type="email"
+              required
+              placeholder="Email for your ticket"
+              value={email}
+              onChange={(e) => onEmailChange(e.target.value)}
+              className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3.5 text-base text-white outline-none transition focus:border-red-500"
+            />
+            <button
+              type="button"
+              onClick={handleUnlock}
+              disabled={busy}
+              className="w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
+            >
+              {busy ? 'Opening checkout…' : CHECKOUT_LABEL}
+            </button>
+          </div>
+
+          <p className="mt-4 text-center text-xs text-gray-600">
+            Access is saved to your email. Use the same email if you log in on another device.
+          </p>
+        </div>
 
         <div
           id="signup"
-          className="scroll-mt-28 rounded-2xl border border-red-600/50 bg-zinc-900/90 p-6 shadow-lg shadow-red-900/5 sm:rounded-3xl sm:p-8"
+          className="scroll-mt-28 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 sm:rounded-3xl sm:p-8"
         >
-          <h2 className="mb-2 text-center text-2xl font-bold">
-            {authMode === 'login' ? 'Log in' : 'Create your account'}
+          <h2 className="mb-2 text-center text-lg font-semibold text-gray-200">
+            {authMode === 'login' ? 'Log in' : 'Or create a password for chat'}
           </h2>
-          <p className="mb-6 text-center text-sm text-gray-400">
-            {previewExpired
-              ? 'Your preview ended — sign up and pay once to unlock the full live stream and chat.'
-              : 'Create a free account to continue after your preview. Pay once for full access tonight.'}
+          <p className="mb-5 text-center text-sm text-gray-500">
+            Optional — only needed if you want live chat on multiple devices.
           </p>
-
-          {message && <p className="mb-4 text-center text-sm text-red-400">{message}</p>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
@@ -135,20 +173,20 @@ export default function LandingFunnel({
             <button
               type="submit"
               disabled={busy}
-              className="w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
+              className="w-full rounded-2xl border border-zinc-600 bg-transparent py-3.5 text-base font-medium text-white transition hover:border-zinc-400 disabled:opacity-60"
             >
               {busy
                 ? 'Please wait…'
                 : authMode === 'login'
                   ? 'Log in'
-                  : 'Create account & continue'}
+                  : 'Create account'}
             </button>
           </form>
 
           <button
             type="button"
             onClick={onAuthModeToggle}
-            className="mt-4 w-full text-sm text-gray-400 underline transition hover:text-white"
+            className="mt-4 w-full text-sm text-gray-500 underline transition hover:text-white"
           >
             {authMode === 'login'
               ? 'Need an account? Sign up'
@@ -160,17 +198,24 @@ export default function LandingFunnel({
               type="button"
               onClick={onForgotPassword}
               disabled={busy}
-              className="mt-2 w-full text-sm text-gray-500 underline transition hover:text-red-400"
+              className="mt-2 w-full text-sm text-gray-600 underline transition hover:text-red-400"
             >
               Forgot password?
             </button>
           )}
         </div>
 
+        <EventCountdown />
+        <NotifyWhenLive />
+        <FreeVsPaid />
         <FAQ />
       </div>
 
-      <StickyUnlockCta visible={previewExpired} onUnlock={handleUnlock} />
+      <StickyUnlockCta
+        visible={previewExpired || previewLive}
+        onUnlock={handleUnlock}
+        busy={busy}
+      />
     </>
   );
 }

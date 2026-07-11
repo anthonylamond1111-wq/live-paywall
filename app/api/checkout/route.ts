@@ -7,6 +7,7 @@ import {
 } from '@/lib/stripe-checkout';
 import { getStripe } from '@/lib/stripe';
 import {
+  ensureUserForCheckout,
   getTokenFromRequest,
   getUserFromRequest,
   resolveUserAccess,
@@ -45,19 +46,42 @@ async function resolvePriceId(): Promise<string | null> {
   return fallbackPriceId ?? null;
 }
 
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export async function POST(request: Request) {
   try {
+    const body = (await request.json().catch(() => ({}))) as { email?: string };
     const user = await getUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Please log in first' }, { status: 401 });
-    }
-
     const token = getTokenFromRequest(request);
-    if (await resolveUserAccess(user, token)) {
-      return NextResponse.json(
-        { error: 'You already have access for this event', alreadyPaid: true },
-        { status: 409 }
-      );
+
+    let userId: string | null = null;
+    let customerEmail: string | null = null;
+
+    if (user) {
+      if (await resolveUserAccess(user, token)) {
+        return NextResponse.json(
+          { error: 'You already have access for this event', alreadyPaid: true },
+          { status: 409 }
+        );
+      }
+      userId = user.id;
+      customerEmail = user.email ?? null;
+    } else {
+      const email = body.email?.trim();
+      if (!email || !isValidEmail(email)) {
+        return NextResponse.json(
+          { error: 'Enter your email to continue to checkout' },
+          { status: 400 }
+        );
+      }
+
+      userId = await ensureUserForCheckout(email);
+      if (!userId) {
+        return NextResponse.json({ error: 'Could not prepare checkout' }, { status: 500 });
+      }
+      customerEmail = email;
     }
 
     const priceId = await resolvePriceId();
@@ -80,9 +104,9 @@ export async function POST(request: Request) {
       mode: 'payment',
       excluded_payment_method_types: [...STRIPE_EXCLUDED_PAYMENT_METHODS],
       wallet_options: STRIPE_WALLET_OPTIONS,
-      customer_email: user.email,
-      client_reference_id: user.id,
-      metadata: { user_id: user.id },
+      customer_email: customerEmail ?? undefined,
+      client_reference_id: userId,
+      metadata: { user_id: userId },
       line_items: [{ quantity: 1, price: priceId }],
       branding_settings: STRIPE_CHECKOUT_BRANDING,
       custom_text: STRIPE_CHECKOUT_CUSTOM_TEXT,

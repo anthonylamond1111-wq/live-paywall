@@ -12,7 +12,10 @@ import LandingFunnel from '@/components/LandingFunnel';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import PageBackground from '@/components/PageBackground';
 import PaywallCard from '@/components/PaywallCard';
+import PreviewConversion from '@/components/PreviewConversion';
+import PreviewStream from '@/components/PreviewStream';
 import SiteFooter from '@/components/SiteFooter';
+import StickyUnlockCta from '@/components/StickyUnlockCta';
 import StreamView from '@/components/StreamView';
 import SuccessScreen from '@/components/SuccessScreen';
 import { getSupabaseClient } from '@/lib/supabase/client';
@@ -35,6 +38,39 @@ async function authFetch(
   });
 }
 
+type VerifyResult = {
+  paid: boolean;
+  status?: string;
+  access_token?: string;
+  refresh_token?: string;
+};
+
+async function verifyCheckoutSession(
+  stripeSessionId: string,
+  activeSession: Session | null
+): Promise<VerifyResult> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (activeSession) {
+    headers.Authorization = `Bearer ${activeSession.access_token}`;
+  }
+
+  const res = await fetch('/api/verify', {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: JSON.stringify({ sessionId: stripeSessionId }),
+  });
+
+  const data = (await res.json().catch(() => ({}))) as VerifyResult & { error?: string };
+  if (!res.ok) {
+    return { paid: false, status: data.status };
+  }
+
+  return data;
+}
+
 export default function UFCAccess() {
   const [view, setView] = useState<View>('loading');
   const [session, setSession] = useState<Session | null>(null);
@@ -49,6 +85,7 @@ export default function UFCAccess() {
     if (typeof window === 'undefined') return false;
     return sessionStorage.getItem('ufc_preview_expired') === '1';
   });
+  const [previewLive, setPreviewLive] = useState(false);
 
   const unlockStream = useCallback(async (activeSession: Session) => {
     const streamRes = await authFetch(activeSession, '/api/stream');
@@ -73,37 +110,63 @@ export default function UFCAccess() {
     return true;
   }, []);
 
+  const enterStreamIfPaid = useCallback(
+    async (activeSession: Session, justPurchased = false) => {
+      if (justPurchased) {
+        setPurchaseJustCompleted(true);
+        trackAnalytics(AnalyticsEvents.PURCHASE);
+      }
+      const unlocked = await unlockStream(activeSession);
+      if (!unlocked) {
+        setView('success');
+      }
+    },
+    [unlockStream]
+  );
+
   const checkAccess = useCallback(
-    async (activeSession: Session) => {
+    async (activeSession: Session, options?: { skipStripeReturn?: boolean }) => {
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get('session_id');
       const canceled = params.get('canceled');
 
       if (canceled) {
-        setMessage('Payment canceled. Pay to unlock the stream.');
+        setMessage('Payment canceled. Tap Pay & watch to try again.');
         window.history.replaceState({}, '', window.location.pathname);
       }
 
-      if (sessionId) {
-        const verifyRes = await authFetch(activeSession, '/api/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId }),
-        });
+      if (sessionId && !options?.skipStripeReturn) {
+        const verified = await verifyCheckoutSession(sessionId, activeSession);
 
-        if (verifyRes.ok) {
-          const { paid, status } = await verifyRes.json();
-          if (paid) {
-            window.history.replaceState({}, '', window.location.pathname);
-            setPurchaseJustCompleted(true);
-            setView('success');
-            return;
+        if (verified.access_token && verified.refresh_token) {
+          const supabase = getSupabaseClient();
+          if (supabase) {
+            await supabase.auth.setSession({
+              access_token: verified.access_token,
+              refresh_token: verified.refresh_token,
+            });
+            const { data } = await supabase.auth.getSession();
+            if (data.session) {
+              setSession(data.session);
+              window.history.replaceState({}, '', window.location.pathname);
+              if (verified.paid) {
+                await enterStreamIfPaid(data.session, true);
+                return;
+              }
+            }
           }
-          if (status && status !== 'paid') {
-            setMessage('Payment is still processing. Refresh in a minute.');
-            setView('pay');
-            return;
-          }
+        }
+
+        if (verified.paid) {
+          window.history.replaceState({}, '', window.location.pathname);
+          await enterStreamIfPaid(activeSession, true);
+          return;
+        }
+
+        if (verified.status && verified.status !== 'paid') {
+          setMessage('Payment is still processing. Refresh in a minute.');
+          setView('pay');
+          return;
         }
 
         setMessage('Payment could not be verified. Try again.');
@@ -124,16 +187,14 @@ export default function UFCAccess() {
 
       const { paid } = await accessRes.json();
       if (paid) {
-        setView('success');
+        await enterStreamIfPaid(activeSession);
         return;
       }
 
       setView('pay');
-      setMessage(
-        `No payment found for ${activeSession.user.email}. Log in with the same email you used at checkout (your Stripe receipt).`
-      );
+      setMessage('');
     },
-    []
+    [enterStreamIfPaid]
   );
 
   useEffect(() => {
@@ -146,18 +207,56 @@ export default function UFCAccess() {
 
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    const init = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const stripeSessionId = params.get('session_id');
+
+      let current = (await supabase.auth.getSession()).data.session;
+
+      if (stripeSessionId) {
+        const verified = await verifyCheckoutSession(stripeSessionId, current);
+
+        if (verified.access_token && verified.refresh_token) {
+          await supabase.auth.setSession({
+            access_token: verified.access_token,
+            refresh_token: verified.refresh_token,
+          });
+          current = (await supabase.auth.getSession()).data.session;
+        }
+
+        if (!mounted) return;
+
+        if (current && verified.paid) {
+          setSession(current);
+          window.history.replaceState({}, '', window.location.pathname);
+          await enterStreamIfPaid(current, true);
+          return;
+        }
+
+        if (verified.paid && current) {
+          setSession(current);
+          window.history.replaceState({}, '', window.location.pathname);
+          await enterStreamIfPaid(current, true);
+          return;
+        }
+      }
+
       if (!mounted) return;
 
-      const current = data.session;
       setSession(current);
 
       if (current) {
-        void checkAccess(current);
+        await checkAccess(current, { skipStripeReturn: Boolean(stripeSessionId) });
+      } else if (params.get('canceled')) {
+        setMessage('Payment canceled. Tap Pay & watch to try again.');
+        window.history.replaceState({}, '', window.location.pathname);
+        setView('auth');
       } else {
         setView('auth');
       }
-    });
+    };
+
+    void init();
 
     const {
       data: { subscription },
@@ -173,7 +272,59 @@ export default function UFCAccess() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [checkAccess]);
+  }, [checkAccess, enterStreamIfPaid]);
+
+  const handleCheckout = useCallback(async () => {
+    const checkoutEmail = session?.user.email ?? email.trim();
+
+    if (!session && !checkoutEmail) {
+      document.getElementById('quick-pay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setMessage('Enter your email to continue to checkout.');
+      return;
+    }
+
+    setBusy(true);
+    setMessage('');
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (session) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify(session ? {} : { email: checkoutEmail }),
+      });
+      const data = await res.json();
+
+      if (res.status === 409 && data.alreadyPaid) {
+        setMessage('You already have access for tonight.');
+        if (session) await checkAccess(session);
+        return;
+      }
+
+      if (!res.ok || !data.url) {
+        setMessage(data.error ?? 'Could not start payment.');
+        return;
+      }
+
+      trackAnalytics(AnalyticsEvents.CHECKOUT_START);
+      window.location.href = data.url;
+    } catch {
+      setMessage('Payment could not be started.');
+    } finally {
+      setBusy(false);
+    }
+  }, [session, email, checkAccess]);
+
+  const handleUnlock = useCallback(() => {
+    void handleCheckout();
+  }, [handleCheckout]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,8 +346,30 @@ export default function UFCAccess() {
       }
 
       if (authMode === 'signup' && !result.data.session) {
-        setMessage('Check your email to confirm your account, then log in.');
-        setAuthMode('login');
+        await fetch('/api/auth/confirm-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+
+        const signIn = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (signIn.error || !signIn.data.session) {
+          setMessage('Account created — log in with your email and password.');
+          setAuthMode('login');
+          return;
+        }
+
+        setSession(signIn.data.session);
+        trackAnalytics(AnalyticsEvents.SIGNUP_SUCCESS);
+        if (previewExpired) {
+          await handleCheckout();
+        } else {
+          await checkAccess(signIn.data.session);
+        }
         return;
       }
 
@@ -208,7 +381,11 @@ export default function UFCAccess() {
             ? AnalyticsEvents.SIGNUP_SUCCESS
             : AnalyticsEvents.LOGIN_SUCCESS
         );
-        await checkAccess(activeSession);
+        if (previewExpired) {
+          await handleCheckout();
+        } else {
+          await checkAccess(activeSession);
+        }
       }
     } catch {
       setMessage('Could not sign in. Try again.');
@@ -224,40 +401,6 @@ export default function UFCAccess() {
     setMessage('');
     await unlockStream(session);
     setBusy(false);
-  };
-
-  const handleCheckout = async () => {
-    if (!session) {
-      setView('auth');
-      setMessage('Log in first to keep your stream access.');
-      return;
-    }
-
-    setBusy(true);
-    setMessage('');
-
-    try {
-      const res = await authFetch(session, '/api/checkout', { method: 'POST' });
-      const data = await res.json();
-
-      if (res.status === 409 && data.alreadyPaid) {
-        setMessage('You already have access for tonight.');
-        await checkAccess(session);
-        return;
-      }
-
-      if (!res.ok || !data.url) {
-        setMessage(data.error ?? 'Could not start payment.');
-        return;
-      }
-
-      trackAnalytics(AnalyticsEvents.CHECKOUT_START);
-      window.location.href = data.url;
-    } catch {
-      setMessage('Payment could not be started.');
-    } finally {
-      setBusy(false);
-    }
   };
 
   const handleSignOut = async () => {
@@ -305,8 +448,8 @@ export default function UFCAccess() {
 
   const handlePreviewExpired = useCallback(() => {
     setPreviewExpired(true);
-    scrollToSignup('signup');
-  }, [scrollToSignup]);
+    void handleCheckout();
+  }, [handleCheckout]);
 
   const isLoggedIn = !!session;
   const showAuthGate = !isLoggedIn || view === 'auth';
@@ -388,6 +531,7 @@ export default function UFCAccess() {
             message={message}
             busy={busy}
             previewExpired={previewExpired}
+            previewLive={previewLive}
             onEmailChange={setEmail}
             onPasswordChange={setPassword}
             onAuthModeToggle={() => {
@@ -396,15 +540,25 @@ export default function UFCAccess() {
             }}
             onForgotPassword={handleForgotPassword}
             onSubmit={handleAuth}
-            onUnlock={() => scrollToSignup('signup')}
+            onUnlock={handleUnlock}
             onPreviewExpired={handlePreviewExpired}
+            onPreviewLiveChange={setPreviewLive}
           />
         )}
 
         {view === 'loading' && isLoggedIn && <LoadingSkeleton />}
 
         {view === 'pay' && isLoggedIn && (
-          <div className={`${LANDING_FUNNEL_WIDTH} space-y-6`}>
+          <div className={`${LANDING_FUNNEL_WIDTH} space-y-5 pb-20 sm:space-y-6`}>
+            <PreviewStream
+              onPreviewExpired={() => setPreviewExpired(true)}
+              onPreviewLiveChange={setPreviewLive}
+              onUnlock={handleUnlock}
+            />
+            <PreviewConversion
+              variant={previewExpired ? 'expired' : 'default'}
+              onUnlock={handleUnlock}
+            />
             <PaywallCard
               email={session?.user.email}
               message={message}
@@ -412,6 +566,11 @@ export default function UFCAccess() {
               onCheckout={handleCheckout}
             />
             <FAQ />
+            <StickyUnlockCta
+              visible={previewExpired || previewLive}
+              onUnlock={handleUnlock}
+              busy={busy}
+            />
           </div>
         )}
 

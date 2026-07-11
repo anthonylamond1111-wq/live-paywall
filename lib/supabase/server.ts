@@ -100,6 +100,8 @@ function sessionEmail(session: {
   return session.customer_details?.email ?? session.customer_email ?? null;
 }
 
+export { sessionEmail };
+
 export function stripeSessionMatchesUser(
   session: {
     metadata?: { user_id?: string } | null;
@@ -168,4 +170,122 @@ export async function resolveUserAccess(
   }
 
   return syncStripePurchasesForUser(user);
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+export async function findUserIdByEmail(email: string): Promise<string | null> {
+  const supabase = getServiceSupabase();
+  if (!supabase) return null;
+
+  const normalized = normalizeEmail(email);
+  let page = 1;
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+
+    if (error || !data.users.length) break;
+
+    const match = data.users.find((user) => user.email?.toLowerCase() === normalized);
+    if (match) return match.id;
+
+    if (data.users.length < 200) break;
+    page += 1;
+  }
+
+  return null;
+}
+
+export async function ensureUserForCheckout(email: string): Promise<string | null> {
+  const supabase = getServiceSupabase();
+  if (!supabase) return null;
+
+  const normalized = normalizeEmail(email);
+  const existingId = await findUserIdByEmail(normalized);
+  if (existingId) return existingId;
+
+  const { data, error } = await supabase.auth.admin.createUser({
+    email: normalized,
+    password: crypto.randomUUID(),
+    email_confirm: true,
+  });
+
+  if (error) {
+    console.error('ensureUserForCheckout error:', error.message);
+    return findUserIdByEmail(normalized);
+  }
+
+  return data.user.id;
+}
+
+export async function confirmSignupUser(email: string, password: string): Promise<boolean> {
+  const supabase = getServiceSupabase();
+  if (!supabase) return false;
+
+  const normalized = normalizeEmail(email);
+  const existingId = await findUserIdByEmail(normalized);
+
+  if (existingId) {
+    const { error } = await supabase.auth.admin.updateUserById(existingId, {
+      email_confirm: true,
+      password,
+    });
+    return !error;
+  }
+
+  const { error } = await supabase.auth.admin.createUser({
+    email: normalized,
+    password,
+    email_confirm: true,
+  });
+
+  if (error) {
+    console.error('confirmSignupUser error:', error.message);
+  }
+
+  return !error;
+}
+
+export async function mintSessionForEmail(email: string) {
+  const supabase = getServiceSupabase();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabase || !url || !anonKey) return null;
+
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email: normalizeEmail(email),
+  });
+
+  if (linkError || !linkData.properties?.hashed_token) {
+    console.error('mintSessionForEmail link error:', linkError?.message);
+    return null;
+  }
+
+  const anonClient = createClient(url, anonKey);
+  const { data: sessionData, error: verifyError } = await anonClient.auth.verifyOtp({
+    token_hash: linkData.properties.hashed_token,
+    type: 'email',
+  });
+
+  if (verifyError || !sessionData.session) {
+    console.error('mintSessionForEmail verify error:', verifyError?.message);
+    return null;
+  }
+
+  return sessionData.session;
+}
+
+export async function getUserEmailById(userId: string): Promise<string | null> {
+  const supabase = getServiceSupabase();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+  if (error || !data.user.email) return null;
+  return data.user.email;
 }

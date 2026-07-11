@@ -4,6 +4,7 @@ let played = false;
 let preloadedAudio: HTMLAudioElement | null = null;
 let activeAudio: HTMLAudioElement | null = null;
 let customSoundAvailable: boolean | null = null;
+let fallbackAttached = false;
 
 function createAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -14,12 +15,27 @@ function createAudioContext(): AudioContext | null {
   return new Ctx();
 }
 
+export function isTouchDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
+function getOrCreateAudio(): HTMLAudioElement | null {
+  if (!INTRO_SOUND_URL) return null;
+  if (!preloadedAudio) {
+    preloadedAudio = new Audio(INTRO_SOUND_URL);
+    preloadedAudio.preload = 'auto';
+    preloadedAudio.load();
+  }
+  return preloadedAudio;
+}
+
 /** Call on intro mount so your file is ready when the user taps. */
 export function preloadIntroSound() {
-  if (typeof window === 'undefined' || !INTRO_SOUND_URL || preloadedAudio) return;
+  if (typeof window === 'undefined' || !INTRO_SOUND_URL) return;
+  const audio = getOrCreateAudio();
+  if (!audio) return;
 
-  const audio = new Audio(INTRO_SOUND_URL);
-  audio.preload = 'auto';
   audio.volume = INTRO_SOUND_VOLUME;
   audio.addEventListener(
     'canplaythrough',
@@ -35,55 +51,63 @@ export function preloadIntroSound() {
     },
     { once: true }
   );
-  audio.load();
+}
+
+function markAudioPlaying(audio: HTMLAudioElement) {
+  customSoundAvailable = true;
+  activeAudio = audio;
   preloadedAudio = audio;
+  played = true;
+  detachIntroSoundFallback();
 }
 
-function waitForAudioEnd(audio: HTMLAudioElement): Promise<void> {
-  return new Promise((resolve) => {
-    if (audio.ended) {
-      resolve();
-      return;
-    }
-    const done = () => resolve();
-    audio.addEventListener('ended', done, { once: true });
-    audio.addEventListener('error', done, { once: true });
-  });
-}
-
-async function playCustomIntroSound(fromUserGesture: boolean): Promise<HTMLAudioElement | null> {
-  if (!INTRO_SOUND_URL) return null;
-  if (customSoundAvailable === false) return null;
-
+/**
+ * Call synchronously inside pointerdown/touchstart — required for iOS Safari.
+ */
+export function playBrandIntroSoundFromGesture(): boolean {
   if (activeAudio && !activeAudio.paused && !activeAudio.ended) {
-    return activeAudio;
+    return true;
   }
 
-  const audio = preloadedAudio ?? new Audio(INTRO_SOUND_URL);
-  audio.volume = INTRO_SOUND_VOLUME;
+  const audio = getOrCreateAudio();
+  if (!audio) return false;
 
+  audio.volume = INTRO_SOUND_VOLUME;
+  if (!activeAudio || activeAudio.ended) {
+    audio.currentTime = 0;
+  }
+
+  try {
+    const result = audio.play();
+    markAudioPlaying(audio);
+    void result?.catch(() => {
+      played = false;
+      activeAudio = null;
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function playCustomIntroSoundAutoplay(): Promise<boolean> {
+  if (!INTRO_SOUND_URL || customSoundAvailable === false) return false;
+  if (activeAudio && !activeAudio.paused && !activeAudio.ended) return true;
+
+  const audio = getOrCreateAudio();
+  if (!audio) return false;
+
+  audio.volume = INTRO_SOUND_VOLUME;
   if (!activeAudio || activeAudio.ended) {
     audio.currentTime = 0;
   }
 
   try {
     await audio.play();
-    customSoundAvailable = true;
-    activeAudio = audio;
-    preloadedAudio = audio;
-    return audio;
+    markAudioPlaying(audio);
+    return true;
   } catch {
-    if (!fromUserGesture) return null;
-    try {
-      await audio.play();
-      customSoundAvailable = true;
-      activeAudio = audio;
-      preloadedAudio = audio;
-      return audio;
-    } catch {
-      customSoundAvailable = false;
-      return null;
-    }
+    return false;
   }
 }
 
@@ -115,73 +139,65 @@ function scheduleHit(ctx: AudioContext, startAt: number) {
   stingOsc.stop(startAt + 0.75);
 }
 
-async function playSynthIntroSound(fromUserGesture: boolean): Promise<boolean> {
+async function playSynthIntroSoundAutoplay(): Promise<boolean> {
   const ctx = createAudioContext();
   if (!ctx) return false;
 
   try {
-    if (ctx.state === 'suspended') {
-      await ctx.resume();
-    }
-
-    if (ctx.state !== 'running') {
-      if (!fromUserGesture) return false;
-      await ctx.resume();
-    }
-
+    if (ctx.state === 'suspended') await ctx.resume();
     if (ctx.state !== 'running') return false;
 
     scheduleHit(ctx, ctx.currentTime + 0.02);
-
-    window.setTimeout(() => {
-      void ctx.close();
-    }, 1200);
-
+    window.setTimeout(() => void ctx.close(), 1200);
+    played = true;
+    activeAudio = null;
     return true;
   } catch {
     return false;
   }
 }
 
-/** Start intro audio. Returns false if autoplay blocked (user must tap). */
+/** Desktop autoplay attempt — returns false if blocked (mobile). */
+export async function tryAutoplayIntroSound(): Promise<boolean> {
+  if (activeAudio && !activeAudio.paused && !activeAudio.ended) return true;
+
+  if (await playCustomIntroSoundAutoplay()) return true;
+  return playSynthIntroSoundAutoplay();
+}
+
+/** @deprecated Use tryAutoplayIntroSound or playBrandIntroSoundFromGesture */
 export async function playBrandIntroSound(fromUserGesture = false): Promise<boolean> {
-  if (played && activeAudio && !activeAudio.paused && !activeAudio.ended) {
-    return true;
-  }
-
-  const customAudio = await playCustomIntroSound(fromUserGesture);
-  if (customAudio) {
-    played = true;
-    return true;
-  }
-
-  const synthPlayed = await playSynthIntroSound(fromUserGesture);
-  if (synthPlayed) {
-    played = true;
-    activeAudio = null;
-    return true;
-  }
-
-  return false;
+  if (fromUserGesture) return playBrandIntroSoundFromGesture();
+  return tryAutoplayIntroSound();
 }
 
-/** Resolves when the current intro sound has fully finished. */
-export async function waitForIntroSoundEnd(): Promise<void> {
-  if (activeAudio) {
-    await waitForAudioEnd(activeAudio);
-    return;
-  }
-
-  if (played) {
-    await new Promise((resolve) => window.setTimeout(resolve, 1200));
-  }
+function onFirstInteraction() {
+  playBrandIntroSoundFromGesture();
 }
 
-export function hasIntroSoundPlayed() {
-  return played;
+function detachIntroSoundFallback() {
+  if (typeof window === 'undefined' || !fallbackAttached) return;
+  window.removeEventListener('pointerdown', onFirstInteraction, true);
+  window.removeEventListener('touchstart', onFirstInteraction, true);
+  fallbackAttached = false;
+}
+
+/** After splash hides — first tap anywhere on the page starts the intro audio. */
+export function setupIntroSoundOnFirstTap() {
+  if (typeof window === 'undefined' || fallbackAttached) return;
+  if (activeAudio && !activeAudio.paused && !activeAudio.ended) return;
+
+  fallbackAttached = true;
+  window.addEventListener('pointerdown', onFirstInteraction, { capture: true, once: true });
+  window.addEventListener('touchstart', onFirstInteraction, { capture: true, once: true });
+}
+
+export function hasIntroSoundStarted(): boolean {
+  return !!(activeAudio && !activeAudio.ended && played);
 }
 
 export function resetIntroSoundForTesting() {
   played = false;
   activeAudio = null;
+  detachIntroSoundFallback();
 }

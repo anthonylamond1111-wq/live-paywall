@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Suspense } from 'react';
 import GoogleAnalytics, { GoogleAnalyticsPageView } from '@/components/GoogleAnalytics';
 import DiscordHelpLink from '@/components/DiscordHelpLink';
+import SiteVisitorHeartbeat from '@/components/SiteVisitorHeartbeat';
 import './globals.css';
 
 const geistSans = Geist({
@@ -70,6 +71,9 @@ export default function RootLayout({
         <GoogleAnalytics />
         <Suspense fallback={null}>
           <GoogleAnalyticsPageView />
+        </Suspense>
+        <Suspense fallback={null}>
+          <SiteVisitorHeartbeat />
         </Suspense>
         <div className="pointer-events-none fixed bottom-[5.25rem] left-4 z-40 sm:bottom-6">
           <DiscordHelpLink className="pointer-events-auto shadow-lg shadow-black/40" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import AddToHomeScreen from '@/components/AddToHomeScreen';
 import BrandIntro from '@/components/BrandIntro';
@@ -20,6 +20,7 @@ import SiteFooter from '@/components/SiteFooter';
 import StickyUnlockCta from '@/components/StickyUnlockCta';
 import StreamView from '@/components/StreamView';
 import SuccessScreen from '@/components/SuccessScreen';
+import VisitorHeartbeat from '@/components/VisitorHeartbeat';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { claimActiveSession, SINGLE_DEVICE_SIGNOUT_MESSAGE } from '@/lib/claim-active-session';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
@@ -89,10 +90,12 @@ export default function UFCAccess() {
     return sessionStorage.getItem('ufc_preview_expired') === '1';
   });
   const [previewLive, setPreviewLive] = useState(false);
+  const sessionRef = useRef<Session | null>(null);
+  sessionRef.current = session;
 
   const handleSessionUnauthorized = useCallback(async () => {
     const supabase = getSupabaseClient();
-    const hadSession = !!session;
+    const hadSession = !!sessionRef.current;
     if (supabase) {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
@@ -105,7 +108,7 @@ export default function UFCAccess() {
     setMessage(
       hadSession ? SINGLE_DEVICE_SIGNOUT_MESSAGE : 'Your session expired. Please log in again.'
     );
-  }, [session]);
+  }, []);
 
   const unlockStream = useCallback(async (activeSession: Session) => {
     const streamRes = await authFetch(activeSession, '/api/stream');
@@ -216,6 +219,11 @@ export default function UFCAccess() {
     [enterStreamIfPaid, handleSessionUnauthorized]
   );
 
+  const checkAccessRef = useRef(checkAccess);
+  checkAccessRef.current = checkAccess;
+  const enterStreamIfPaidRef = useRef(enterStreamIfPaid);
+  enterStreamIfPaidRef.current = enterStreamIfPaid;
+
   useEffect(() => {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -251,14 +259,14 @@ export default function UFCAccess() {
         if (current && verified.paid) {
           setSession(current);
           window.history.replaceState({}, '', window.location.pathname);
-          await enterStreamIfPaid(current, true);
+          await enterStreamIfPaidRef.current(current, true);
           return;
         }
 
         if (verified.paid && current) {
           setSession(current);
           window.history.replaceState({}, '', window.location.pathname);
-          await enterStreamIfPaid(current, true);
+          await enterStreamIfPaidRef.current(current, true);
           return;
         }
       }
@@ -268,7 +276,7 @@ export default function UFCAccess() {
       setSession(current);
 
       if (current) {
-        await checkAccess(current, { skipStripeReturn: Boolean(stripeSessionId) });
+        await checkAccessRef.current(current, { skipStripeReturn: Boolean(stripeSessionId) });
       } else if (params.get('canceled')) {
         setMessage('Payment canceled. Tap Pay & watch to try again.');
         window.history.replaceState({}, '', window.location.pathname);
@@ -283,7 +291,13 @@ export default function UFCAccess() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
-      setSession(nextSession);
+      if (event === 'INITIAL_SESSION') return;
+
+      setSession((prev) => {
+        if (prev?.access_token === nextSession?.access_token) return prev;
+        return nextSession;
+      });
+
       if (event === 'SIGNED_IN' && nextSession) {
         await claimActiveSession(supabase, nextSession);
       }
@@ -297,7 +311,7 @@ export default function UFCAccess() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [checkAccess, enterStreamIfPaid]);
+  }, []);
 
   const handleCheckout = useCallback(async () => {
     const checkoutEmail = session?.user.email ?? email.trim();
@@ -494,6 +508,10 @@ export default function UFCAccess() {
 
   return (
     <div className="relative min-h-[100dvh] bg-black text-white">
+      <VisitorHeartbeat
+        view={view === 'stream' ? 'stream' : 'site'}
+        active={view !== 'loading'}
+      />
       <BrandIntro />
       <PageBackground />
       <AddToHomeScreen />

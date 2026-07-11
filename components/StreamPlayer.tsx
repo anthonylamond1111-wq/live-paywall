@@ -158,8 +158,8 @@ export default function StreamPlayer({
     const syncToLiveEdge = () => {
       if (!video || !Number.isFinite(video.duration)) return;
       const behindLive = video.duration - video.currentTime;
-      if (behindLive > 6) {
-        video.currentTime = Math.max(0, video.duration - 2);
+      if (behindLive > 20) {
+        video.currentTime = Math.max(0, video.duration - 6);
       }
     };
 
@@ -167,13 +167,17 @@ export default function StreamPlayer({
       const useProxy = src.includes('/api/hls/');
       hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 0,
-        liveSyncDurationCount: 2,
-        liveMaxLatencyDurationCount: 5,
-        maxLiveSyncPlaybackRate: 1.25,
-        maxBufferLength: 20,
-        maxMaxBufferLength: 30,
+        lowLatencyMode: false,
+        backBufferLength: 30,
+        liveSyncDurationCount: 4,
+        liveMaxLatencyDurationCount: 12,
+        maxLiveSyncPlaybackRate: 1.1,
+        maxBufferLength: 45,
+        maxMaxBufferLength: 90,
+        capLevelToPlayerSize: true,
+        abrEwmaDefaultEstimate: 2_500_000,
+        fragLoadingMaxRetry: 6,
+        manifestLoadingMaxRetry: 4,
         xhrSetup: (xhr, url) => {
           if (useProxy && url.includes('/api/hls/')) {
             xhr.withCredentials = true;
@@ -238,7 +242,7 @@ export default function StreamPlayer({
         );
       });
 
-      const liveSyncTimer = window.setInterval(syncToLiveEdge, 4000);
+      const liveSyncTimer = window.setInterval(syncToLiveEdge, 10000);
 
       return () => {
         window.clearInterval(liveSyncTimer);
@@ -267,7 +271,7 @@ export default function StreamPlayer({
       };
       video.addEventListener('loadedmetadata', onNativeMetadata);
       video.addEventListener('error', onNativeError);
-      const liveSyncTimer = window.setInterval(syncToLiveEdge, 4000);
+      const liveSyncTimer = window.setInterval(syncToLiveEdge, 10000);
       return () => {
         window.clearInterval(liveSyncTimer);
         video.removeEventListener('loadeddata', signalLiveIfPicture);

@@ -20,31 +20,12 @@ function isAllowedUrl(url: string) {
   }
 }
 
-function getProxyOrigin(request: Request): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (siteUrl) {
-    return siteUrl.replace(/\/$/, '');
-  }
-
-  const forwardedHost = request.headers.get('x-forwarded-host');
-  const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https';
-  if (forwardedHost) {
-    return `${forwardedProto}://${forwardedHost}`;
-  }
-
-  return new URL(request.url).origin;
-}
-
 function toAbsoluteUrl(uri: string, base: string) {
   return uri.startsWith('http') ? uri : new URL(uri, base).toString();
 }
 
-function toProxyUrl(uri: string, base: string, origin: string) {
-  const absolute = toAbsoluteUrl(uri, base);
-  return `${origin}/api/hls/playlist?url=${encodeURIComponent(absolute)}`;
-}
-
-function rewritePlaylist(body: string, sourceUrl: string, origin: string) {
+/** Point playlists at Cloudflare/Livepeer directly — only the entry manifest hits Railway for auth. */
+function rewritePlaylist(body: string, sourceUrl: string) {
   const base = sourceUrl.substring(0, sourceUrl.lastIndexOf('/') + 1);
 
   return body
@@ -56,18 +37,17 @@ function rewritePlaylist(body: string, sourceUrl: string, origin: string) {
       if (trimmed.startsWith('#')) {
         if (!trimmed.includes('URI="')) return line;
         return line.replace(/URI="([^"]+)"/g, (_match, uri: string) => {
-          return `URI="${toProxyUrl(uri, base, origin)}"`;
+          return `URI="${toAbsoluteUrl(uri, base)}"`;
         });
       }
 
-      return toProxyUrl(trimmed, base, origin);
+      return toAbsoluteUrl(trimmed, base);
     })
     .join('\n');
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const origin = getProxyOrigin(request);
   const target = searchParams.get('url') ?? getStreamUrl();
 
   if (!target) {
@@ -108,7 +88,7 @@ export async function GET(request: Request) {
         });
       }
 
-      return new Response(rewritePlaylist(text, target, origin), {
+      return new Response(rewritePlaylist(text, target), {
         headers: {
           'Content-Type': 'application/vnd.apple.mpegurl',
           'Cache-Control': 'no-store',

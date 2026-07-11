@@ -5,9 +5,9 @@ import BrandLogo from '@/components/BrandLogo';
 import {
   isTouchDevice,
   playBrandIntroSoundFromGesture,
-  preloadIntroSound,
   setupIntroSoundOnFirstTap,
   tryAutoplayIntroSound,
+  warmIntroSound,
 } from '@/lib/intro-sound';
 
 const INTRO_KEY = 'ufc_access_intro_seen_v5';
@@ -27,11 +27,12 @@ export default function BrandIntro() {
     if (sessionStorage.getItem(INTRO_KEY) === '1') return;
 
     setVisible(true);
-    preloadIntroSound();
 
-    if (!touchDevice) {
-      void tryAutoplayIntroSound();
-    }
+    void warmIntroSound().then(() => {
+      if (!touchDevice) {
+        void tryAutoplayIntroSound();
+      }
+    });
 
     const timer = window.setTimeout(hideSplash, SPLASH_MS);
     return () => window.clearTimeout(timer);

@@ -1,9 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { isChatAdmin } from '@/lib/chat-admin';
+import {
+  chatUsernameError,
+  getStoredChatUsername,
+  storeChatUsername,
+} from '@/lib/chat-username';
 import { EVENT } from '@/lib/event';
 
 type ChatMessage = {
@@ -62,14 +67,19 @@ export default function LiveChat({
 }: LiveChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [lastSentAt, setLastSentAt] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [chatBlocked, setChatBlocked] = useState<string | null>(null);
   const [modBusy, setModBusy] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [chatUsername, setChatUsername] = useState<string | null>(null);
+  const [usernameDraft, setUsernameDraft] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+
+  useEffect(() => {
+    setChatUsername(getStoredChatUsername());
+  }, []);
 
   const appendMessage = useCallback((message: ChatMessage) => {
     setMessages((prev) => {
@@ -82,11 +92,24 @@ export default function LiveChat({
     });
   }, []);
 
-  const sendMessage = async (body: string) => {
-    if (chatBlocked) return;
+  const removeMessage = useCallback((id: string) => {
+    setMessages((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  const replaceMessage = useCallback((tempId: string, message: ChatMessage) => {
+    setMessages((prev) => {
+      if (prev.some((item) => item.id === message.id)) {
+        return prev.filter((item) => item.id !== tempId);
+      }
+      return prev.map((item) => (item.id === tempId ? message : item));
+    });
+  }, []);
+
+  const sendMessage = (body: string) => {
+    if (chatBlocked || !chatUsername) return;
 
     const trimmed = body.trim();
-    if (!trimmed || sending) return;
+    if (!trimmed) return;
 
     const now = Date.now();
     if (now - lastSentAt < SLOW_MODE_MS) {
@@ -94,36 +117,49 @@ export default function LiveChat({
       return;
     }
 
-    setSending(true);
+    const tempId = `pending-${crypto.randomUUID()}`;
+    const optimistic: ChatMessage = {
+      id: tempId,
+      user_id: session.user.id,
+      display_name: chatUsername,
+      body: trimmed.slice(0, MAX_MESSAGE_LENGTH),
+      created_at: new Date().toISOString(),
+    };
+
+    appendMessage(optimistic);
+    setDraft('');
+    setLastSentAt(now);
     setError('');
 
-    try {
-      const res = await chatFetch(session, '/api/chat', {
-        method: 'POST',
-        body: JSON.stringify({ body: trimmed.slice(0, MAX_MESSAGE_LENGTH) }),
-      });
+    void chatFetch(session, '/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        body: optimistic.body,
+        displayName: chatUsername,
+      }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error ?? 'Could not send message.');
-        if (res.status === 403) {
-          setChatBlocked(data.error ?? 'You cannot chat right now.');
+        if (!res.ok) {
+          removeMessage(tempId);
+          setDraft(trimmed);
+          setError(data.error ?? 'Could not send message.');
+          if (res.status === 403) {
+            setChatBlocked(data.error ?? 'You cannot chat right now.');
+          }
+          return;
         }
-        return;
-      }
 
-      if (data.message) {
-        appendMessage(data.message as ChatMessage);
-      }
-
-      setDraft('');
-      setLastSentAt(now);
-    } catch {
-      setError('Could not send message. Check your connection.');
-    } finally {
-      setSending(false);
-    }
+        if (data.message) {
+          replaceMessage(tempId, data.message as ChatMessage);
+        }
+      })
+      .catch(() => {
+        removeMessage(tempId);
+        setDraft(trimmed);
+        setError('Could not send message. Check your connection.');
+      });
   };
 
   const moderateUser = async (
@@ -219,17 +255,32 @@ export default function LiveChat({
     };
   }, [appendMessage, session]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    await sendMessage(draft);
+    sendMessage(draft);
+  };
+
+  const handleUsernameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validationError = chatUsernameError(usernameDraft);
+    if (validationError) {
+      setUsernameError(validationError);
+      return;
+    }
+
+    const saved = storeChatUsername(usernameDraft);
+    if (!saved) {
+      setUsernameError('Could not save username. Try another one.');
+      return;
+    }
+
+    setChatUsername(saved);
+    setUsernameDraft('');
+    setUsernameError('');
   };
 
   const uniqueChatters = new Set(messages.map((m) => m.user_id)).size;
-  const canSend = !chatBlocked && !sending;
+  const canSend = !chatBlocked && !!chatUsername;
 
   return (
     <div
@@ -354,7 +405,6 @@ export default function LiveChat({
             </div>
           );
         })}
-        <div ref={bottomRef} />
       </div>
 
       <form onSubmit={handleSend} className="border-t border-zinc-800 bg-zinc-900/80 p-3">
@@ -368,15 +418,70 @@ export default function LiveChat({
           <p className="mb-2 text-xs text-red-400">{error}</p>
         )}
 
-        {!chatBlocked && (
+        {!chatBlocked && !chatUsername && (
+          <form
+            onSubmit={handleUsernameSubmit}
+            className="rounded-xl border border-zinc-700 bg-black/40 p-4"
+          >
+            <p className="text-sm font-semibold text-white">Choose your chat name</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Pick a username before you join the room. Letters, numbers, _ and - only.
+            </p>
+            {usernameError && (
+              <p className="mt-3 text-xs text-red-400">{usernameError}</p>
+            )}
+            <div className="mt-3 flex gap-2">
+              <input
+                type="text"
+                value={usernameDraft}
+                onChange={(e) => {
+                  setUsernameDraft(e.target.value);
+                  setUsernameError('');
+                }}
+                maxLength={20}
+                placeholder="Your username"
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm text-white outline-none transition focus:border-red-500"
+              />
+              <button
+                type="submit"
+                disabled={!usernameDraft.trim()}
+                className="shrink-0 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-gray-100 disabled:opacity-50"
+              >
+                Join chat
+              </button>
+            </div>
+          </form>
+        )}
+
+        {!chatBlocked && chatUsername && (
           <>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs text-gray-500">
+                Chatting as{' '}
+                <span className="font-semibold text-gray-300">{chatUsername}</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setChatUsername(null);
+                  setUsernameDraft('');
+                }}
+                className="text-[10px] text-gray-600 underline transition hover:text-gray-400"
+              >
+                Change name
+              </button>
+            </div>
+
             <div className="mb-2 flex gap-1">
               {QUICK_REACTIONS.map((emoji) => (
                 <button
                   key={emoji}
                   type="button"
                   disabled={!canSend}
-                  onClick={() => void sendMessage(emoji)}
+                  onClick={() => sendMessage(emoji)}
                   className="rounded-lg px-2 py-1 text-lg transition hover:bg-zinc-800 disabled:opacity-50"
                 >
                   {emoji}

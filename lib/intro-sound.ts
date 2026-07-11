@@ -5,6 +5,7 @@ let preloadedAudio: HTMLAudioElement | null = null;
 let activeAudio: HTMLAudioElement | null = null;
 let customSoundAvailable: boolean | null = null;
 let fallbackAttached = false;
+let warmPromise: Promise<HTMLAudioElement | null> | null = null;
 
 function createAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -20,37 +21,90 @@ export function isTouchDevice(): boolean {
   return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 }
 
-function getOrCreateAudio(): HTMLAudioElement | null {
-  if (!INTRO_SOUND_URL) return null;
-  if (!preloadedAudio) {
-    preloadedAudio = new Audio(INTRO_SOUND_URL);
-    preloadedAudio.preload = 'auto';
-    preloadedAudio.load();
+function waitForCanPlay(audio: HTMLAudioElement): Promise<HTMLAudioElement> {
+  if (audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+    return Promise.resolve(audio);
   }
-  return preloadedAudio;
+
+  return new Promise((resolve, reject) => {
+    const onReady = () => {
+      cleanup();
+      resolve(audio);
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error('Intro sound failed to load'));
+    };
+    const cleanup = () => {
+      audio.removeEventListener('canplaythrough', onReady);
+      audio.removeEventListener('error', onError);
+    };
+
+    audio.addEventListener('canplaythrough', onReady, { once: true });
+    audio.addEventListener('error', onError, { once: true });
+    audio.load();
+  });
 }
 
-/** Call on intro mount so your file is ready when the user taps. */
-export function preloadIntroSound() {
-  if (typeof window === 'undefined' || !INTRO_SOUND_URL) return;
-  const audio = getOrCreateAudio();
-  if (!audio) return;
+async function loadIntroAudio(): Promise<HTMLAudioElement | null> {
+  if (!INTRO_SOUND_URL) return null;
+  if (preloadedAudio && preloadedAudio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+    return preloadedAudio;
+  }
 
-  audio.volume = INTRO_SOUND_VOLUME;
-  audio.addEventListener(
-    'canplaythrough',
-    () => {
-      customSoundAvailable = true;
-    },
-    { once: true }
-  );
-  audio.addEventListener(
-    'error',
-    () => {
-      customSoundAvailable = false;
-    },
-    { once: true }
-  );
+  try {
+    const response = await fetch(INTRO_SOUND_URL, { cache: 'force-cache' });
+    if (!response.ok) throw new Error('Intro sound fetch failed');
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const audio = new Audio(objectUrl);
+    audio.preload = 'auto';
+    audio.volume = INTRO_SOUND_VOLUME;
+
+    await waitForCanPlay(audio);
+
+    customSoundAvailable = true;
+    preloadedAudio = audio;
+    return audio;
+  } catch {
+    customSoundAvailable = false;
+    return null;
+  }
+}
+
+/** Start loading intro audio as early as possible (layout mount). */
+export function warmIntroSound(): Promise<HTMLAudioElement | null> {
+  if (typeof window === 'undefined' || !INTRO_SOUND_URL) {
+    return Promise.resolve(null);
+  }
+
+  if (preloadedAudio && preloadedAudio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+    return Promise.resolve(preloadedAudio);
+  }
+
+  if (!warmPromise) {
+    warmPromise = loadIntroAudio().finally(() => {
+      warmPromise = null;
+    });
+  }
+
+  return warmPromise;
+}
+
+/** @deprecated Prefer warmIntroSound() on layout mount. */
+export function preloadIntroSound() {
+  void warmIntroSound();
+}
+
+function getReadyAudio(): HTMLAudioElement | null {
+  if (
+    preloadedAudio &&
+    preloadedAudio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+  ) {
+    return preloadedAudio;
+  }
+  return null;
 }
 
 function markAudioPlaying(audio: HTMLAudioElement) {
@@ -69,8 +123,16 @@ export function playBrandIntroSoundFromGesture(): boolean {
     return true;
   }
 
-  const audio = getOrCreateAudio();
-  if (!audio) return false;
+  const audio = getReadyAudio();
+  if (!audio) {
+    void warmIntroSound().then((loaded) => {
+      if (!loaded || played) return;
+      loaded.currentTime = 0;
+      loaded.volume = INTRO_SOUND_VOLUME;
+      void loaded.play().then(() => markAudioPlaying(loaded)).catch(() => {});
+    });
+    return false;
+  }
 
   audio.volume = INTRO_SOUND_VOLUME;
   if (!activeAudio || activeAudio.ended) {
@@ -94,7 +156,7 @@ async function playCustomIntroSoundAutoplay(): Promise<boolean> {
   if (!INTRO_SOUND_URL || customSoundAvailable === false) return false;
   if (activeAudio && !activeAudio.paused && !activeAudio.ended) return true;
 
-  const audio = getOrCreateAudio();
+  const audio = await warmIntroSound();
   if (!audio) return false;
 
   audio.volume = INTRO_SOUND_VOLUME;
@@ -199,5 +261,6 @@ export function hasIntroSoundStarted(): boolean {
 export function resetIntroSoundForTesting() {
   played = false;
   activeAudio = null;
+  warmPromise = null;
   detachIntroSoundFallback();
 }

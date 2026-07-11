@@ -6,6 +6,7 @@ import {
   resolveUserAccess,
 } from '@/lib/supabase/server';
 import { chatDisplayName } from '@/lib/chat-display';
+import { sanitizeChatUsername } from '@/lib/chat-username';
 import { isChatAdmin } from '@/lib/chat-admin';
 import { checkUserCanChat } from '@/lib/chat-moderation';
 
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: { body?: string };
+  let body: { body?: string; displayName?: string };
   try {
     body = await request.json();
   } catch {
@@ -83,6 +84,14 @@ export async function POST(request: Request) {
   const text = body.body?.trim();
   if (!text || text.length > 500) {
     return NextResponse.json({ error: 'Message must be 1–500 characters' }, { status: 400 });
+  }
+
+  const customName = sanitizeChatUsername(body.displayName ?? '');
+  if (!customName && !isChatAdmin(user.email)) {
+    return NextResponse.json(
+      { error: 'Choose a valid chat username before sending messages.' },
+      { status: 400 }
+    );
   }
 
   const supabase = getServiceSupabase();
@@ -99,7 +108,9 @@ export async function POST(request: Request) {
     .from('chat_messages')
     .insert({
       user_id: user.id,
-      display_name: chatDisplayName(user.email),
+      display_name: isChatAdmin(user.email)
+        ? chatDisplayName(user.email)
+        : customName!,
       body: text,
     })
     .select('id, user_id, display_name, body, created_at')

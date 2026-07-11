@@ -16,7 +16,6 @@ import ShareButton from '@/components/ShareButton';
 import { LANDING_FUNNEL_WIDTH } from '@/components/LandingFunnel';
 
 type PlayerMode = 'normal' | 'theatre' | 'fullscreen';
-type MobileTab = 'watch' | 'chat';
 
 type StreamViewProps = {
   session: Session;
@@ -26,7 +25,6 @@ type StreamViewProps = {
 
 export default function StreamView({ session, streamUrl, onBackToHome }: StreamViewProps) {
   const [playerMode, setPlayerMode] = useState<PlayerMode>('normal');
-  const [mobileTab, setMobileTab] = useState<MobileTab>('watch');
   const [viewerCount, setViewerCount] = useState(1);
   const [isLive, setIsLive] = useState(false);
   const [health, setHealth] = useState<StreamHealthStatus>('offline');
@@ -222,7 +220,6 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
               viewerCount={viewerCount}
               streamLive={isLive}
               beforeStreamStart={!isLive}
-              mobileExpanded={mobileTab === 'chat'}
             />
           </div>
         )}
@@ -233,38 +230,6 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
           <div className={LANDING_FUNNEL_WIDTH}>
             <TaleOfTheTape />
           </div>
-
-          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-800 bg-black/95 backdrop-blur-md">
-            <div className={`flex ${LANDING_FUNNEL_WIDTH}`}>
-              <button
-                type="button"
-                onClick={() => setMobileTab('watch')}
-                className={`flex-1 py-3 text-sm font-semibold ${
-                  mobileTab === 'watch' ? 'text-red-400' : 'text-gray-500'
-                }`}
-              >
-                Watch + chat
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileTab('chat');
-                  window.setTimeout(() => {
-                    document.getElementById('live-chat-panel')?.scrollIntoView({
-                      behavior: 'smooth',
-                      block: 'start',
-                    });
-                  }, 50);
-                }}
-                className={`flex-1 py-3 text-sm font-semibold ${
-                  mobileTab === 'chat' ? 'text-red-400' : 'text-gray-500'
-                }`}
-              >
-                Jump to chat
-              </button>
-            </div>
-          </div>
-          <div className="h-14" />
 
           <div className={LANDING_FUNNEL_WIDTH}>
             <FightInfo />

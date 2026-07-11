@@ -3,7 +3,9 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Suspense } from 'react';
 import GoogleAnalytics, { GoogleAnalyticsPageView } from '@/components/GoogleAnalytics';
 import DiscordHelpLink from '@/components/DiscordHelpLink';
+import IntroSoundPreloader from '@/components/IntroSoundPreloader';
 import SiteVisitorHeartbeat from '@/components/SiteVisitorHeartbeat';
+import { INTRO_SOUND_URL } from '@/lib/constants';
 import './globals.css';
 
 const geistSans = Geist({
@@ -67,7 +69,11 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <link rel="preload" href={INTRO_SOUND_URL} as="fetch" crossOrigin="anonymous" />
+      </head>
       <body className="min-h-full flex flex-col bg-black text-white">
+        <IntroSoundPreloader />
         <GoogleAnalytics />
         <Suspense fallback={null}>
           <GoogleAnalyticsPageView />

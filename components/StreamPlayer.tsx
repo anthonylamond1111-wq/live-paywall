@@ -47,9 +47,12 @@ export default function StreamPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasLiveRef = useRef(false);
 
   const [error, setError] = useState('');
   const [errorTitle, setErrorTitle] = useState('Stream unavailable');
+  const [reconnectToken, setReconnectToken] = useState(0);
+  const [reconnecting, setReconnecting] = useState(false);
   const [muted, setMuted] = useState(true);
   const [showUnmute, setShowUnmute] = useState(true);
   const [playing, setPlaying] = useState(false);
@@ -66,6 +69,30 @@ export default function StreamPlayer({
       if (playing) setShowControls(false);
     }, 3000);
   }, [playing]);
+
+  const triggerReconnect = useCallback(() => {
+    setReconnecting(true);
+    setReconnectToken((current) => current + 1);
+  }, []);
+
+  const markLive = useCallback(() => {
+    wasLiveRef.current = true;
+    setReconnecting(false);
+    setError('');
+    onLiveChange?.(true);
+    onHealthChange?.('good');
+  }, [onHealthChange, onLiveChange]);
+
+  const showStreamError = useCallback(
+    (title: string, message: string) => {
+      onLiveChange?.(false);
+      onHealthChange?.(wasLiveRef.current ? 'buffering' : 'offline');
+      setErrorTitle(title);
+      setError(message);
+      setReconnecting(false);
+    },
+    [onHealthChange, onLiveChange]
+  );
 
   useEffect(() => {
     setPipSupported(
@@ -95,7 +122,11 @@ export default function StreamPlayer({
       video?.removeEventListener('loadedmetadata', update);
       video?.removeEventListener('canplay', update);
     };
-  }, [showCastButton, src]);
+  }, [showCastButton, src, reconnectToken]);
+
+  useEffect(() => {
+    wasLiveRef.current = false;
+  }, [src]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -113,9 +144,7 @@ export default function StreamPlayer({
 
     const signalLiveIfPicture = () => {
       if (video.videoWidth > 0 && video.videoHeight > 0) {
-        setError('');
-        onLiveChange?.(true);
-        onHealthChange?.('good');
+        markLive();
       }
     };
 
@@ -168,6 +197,7 @@ export default function StreamPlayer({
         setCurrentLevel(hls?.currentLevel ?? -1);
         hls?.startLoad(-1);
         startPlayback();
+        setReconnecting(false);
       });
 
       hls.on(Hls.Events.FRAG_BUFFERED, syncToLiveEdge);
@@ -180,15 +210,18 @@ export default function StreamPlayer({
         if (!data.fatal) return;
 
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          onLiveChange?.(false);
-          onHealthChange?.('buffering');
-          setErrorTitle(hasStreamStarted() ? 'Broadcast not live yet' : 'Stream has not started yet');
-          setError(
-            hasStreamStarted()
-              ? 'Waiting for the broadcast to begin. This page will connect automatically.'
-              : 'The stream is not live yet. Check back at the scheduled start time.'
+          showStreamError(
+            wasLiveRef.current
+              ? 'Connection lost'
+              : hasStreamStarted()
+                ? 'Broadcast not live yet'
+                : 'Stream has not started yet',
+            wasLiveRef.current
+              ? 'Tap reconnect below to try again.'
+              : hasStreamStarted()
+                ? 'The broadcast has not started yet. Tap reconnect when it goes live.'
+                : 'The stream is not live yet. Check back at the scheduled start time.'
           );
-          hls?.startLoad();
           return;
         }
 
@@ -197,11 +230,12 @@ export default function StreamPlayer({
           return;
         }
 
-        onLiveChange?.(false);
-        onHealthChange?.('offline');
-        setErrorTitle('Broadcast not live yet');
-        setError('The stream has not started. Refresh this page when the broadcast goes live.');
-        hls?.destroy();
+        showStreamError(
+          wasLiveRef.current ? 'Connection lost' : 'Broadcast not live yet',
+          wasLiveRef.current
+            ? 'Playback stopped. Tap reconnect below to try again.'
+            : 'The stream has not started. Tap reconnect when the broadcast goes live.'
+        );
       });
 
       const liveSyncTimer = window.setInterval(syncToLiveEdge, 4000);
@@ -221,14 +255,25 @@ export default function StreamPlayer({
       const onNativeMetadata = () => {
         startPlayback();
         syncToLiveEdge();
+        setReconnecting(false);
+      };
+      const onNativeError = () => {
+        showStreamError(
+          wasLiveRef.current ? 'Connection lost' : 'Broadcast not live yet',
+          wasLiveRef.current
+            ? 'Playback stopped. Tap reconnect below to try again.'
+            : 'Waiting for the broadcast. Tap reconnect when it goes live.'
+        );
       };
       video.addEventListener('loadedmetadata', onNativeMetadata);
+      video.addEventListener('error', onNativeError);
       const liveSyncTimer = window.setInterval(syncToLiveEdge, 4000);
       return () => {
         window.clearInterval(liveSyncTimer);
         video.removeEventListener('loadeddata', signalLiveIfPicture);
         video.removeEventListener('playing', signalLiveIfPicture);
         video.removeEventListener('loadedmetadata', onNativeMetadata);
+        video.removeEventListener('error', onNativeError);
         video.removeAttribute('src');
         video.load();
       };
@@ -237,7 +282,7 @@ export default function StreamPlayer({
     video.removeEventListener('loadeddata', signalLiveIfPicture);
     video.removeEventListener('playing', signalLiveIfPicture);
     setError('This browser does not support live stream playback.');
-  }, [src, onLiveChange, onHealthChange, accessToken]);
+  }, [src, onLiveChange, onHealthChange, accessToken, reconnectToken, markLive, showStreamError]);
 
   const handleUnmute = () => {
     const video = videoRef.current;
@@ -338,12 +383,16 @@ export default function StreamPlayer({
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/90 px-6 text-center">
           <p className="mb-2 text-lg font-semibold text-white">{errorTitle}</p>
           <p className="text-sm text-gray-400">{error}</p>
-          {errorTitle.includes('not live') && (
-            <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
-              Checking for signal…
-            </div>
-          )}
+          <div className="mt-5">
+            <button
+              type="button"
+              onClick={triggerReconnect}
+              disabled={reconnecting}
+              className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-gray-100 disabled:opacity-60"
+            >
+              {reconnecting ? 'Reconnecting…' : 'Reconnect'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -423,6 +472,23 @@ export default function StreamPlayer({
           {castVisible && (
             <CastToTvButton videoRef={videoRef} variant="player" />
           )}
+
+          <button
+            type="button"
+            onClick={triggerReconnect}
+            className="rounded-lg p-2 text-white transition hover:bg-white/10"
+            aria-label="Reconnect stream"
+            title="Reconnect"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h5M20 20v-5h-5M20 4l-3.5 3.5a8 8 0 00-13 2M4 20l3.5-3.5a8 8 0 0113-2"
+              />
+            </svg>
+          </button>
 
           {onRequestFullscreen && (
             <button

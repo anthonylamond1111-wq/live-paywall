@@ -21,6 +21,7 @@ import StickyUnlockCta from '@/components/StickyUnlockCta';
 import StreamView from '@/components/StreamView';
 import SuccessScreen from '@/components/SuccessScreen';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { claimActiveSession, SINGLE_DEVICE_SIGNOUT_MESSAGE } from '@/lib/claim-active-session';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
 type View = 'loading' | 'auth' | 'pay' | 'success' | 'stream';
@@ -89,6 +90,23 @@ export default function UFCAccess() {
   });
   const [previewLive, setPreviewLive] = useState(false);
 
+  const handleSessionUnauthorized = useCallback(async () => {
+    const supabase = getSupabaseClient();
+    const hadSession = !!session;
+    if (supabase) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await supabase.auth.signOut();
+      }
+    }
+    setSession(null);
+    setStreamUrl(null);
+    setView('auth');
+    setMessage(
+      hadSession ? SINGLE_DEVICE_SIGNOUT_MESSAGE : 'Your session expired. Please log in again.'
+    );
+  }, [session]);
+
   const unlockStream = useCallback(async (activeSession: Session) => {
     const streamRes = await authFetch(activeSession, '/api/stream');
     if (!streamRes.ok) {
@@ -97,8 +115,7 @@ export default function UFCAccess() {
         setMessage('Payment required to watch the stream.');
         setView('pay');
       } else if (streamRes.status === 401) {
-        setMessage('Your session expired. Please log in again.');
-        setView('auth');
+        await handleSessionUnauthorized();
       } else {
         setMessage(data.error ?? 'Could not load the stream. Refresh and try again.');
         setView('success');
@@ -110,7 +127,7 @@ export default function UFCAccess() {
     setStreamUrl(url);
     setView('stream');
     return true;
-  }, []);
+  }, [handleSessionUnauthorized]);
 
   const enterStreamIfPaid = useCallback(
     async (activeSession: Session, justPurchased = false) => {
@@ -150,6 +167,7 @@ export default function UFCAccess() {
             const { data } = await supabase.auth.getSession();
             if (data.session) {
               setSession(data.session);
+              await claimActiveSession(supabase, data.session);
               window.history.replaceState({}, '', window.location.pathname);
               if (verified.paid) {
                 await enterStreamIfPaid(data.session, true);
@@ -176,8 +194,7 @@ export default function UFCAccess() {
 
       const accessRes = await authFetch(activeSession, '/api/access');
       if (accessRes.status === 401) {
-        setView('auth');
-        setMessage('Your session expired. Please log in again.');
+        await handleSessionUnauthorized();
         return;
       }
 
@@ -196,7 +213,7 @@ export default function UFCAccess() {
       setView('pay');
       setMessage('');
     },
-    [enterStreamIfPaid]
+    [enterStreamIfPaid, handleSessionUnauthorized]
   );
 
   useEffect(() => {
@@ -224,6 +241,9 @@ export default function UFCAccess() {
             refresh_token: verified.refresh_token,
           });
           current = (await supabase.auth.getSession()).data.session;
+          if (current) {
+            await claimActiveSession(supabase, current);
+          }
         }
 
         if (!mounted) return;
@@ -262,8 +282,11 @@ export default function UFCAccess() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
       setSession(nextSession);
+      if (event === 'SIGNED_IN' && nextSession) {
+        await claimActiveSession(supabase, nextSession);
+      }
       if (!nextSession) {
         setStreamUrl(null);
         setView('auth');

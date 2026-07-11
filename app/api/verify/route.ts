@@ -9,14 +9,20 @@ import {
   getUserFromRequest,
   mintSessionForEmail,
   recordPurchase,
+  registerActiveAuthSession,
   resolveUserAccess,
   sessionEmail,
+  signOutOtherAuthSessions,
   stripeSessionMatchesUser,
 } from '@/lib/supabase/server';
+import {
+  getSessionIdFromAccessToken,
+  isMultiDeviceEmail,
+} from '@/lib/single-device-auth';
 
 export async function POST(request: Request) {
   try {
-    const user = await getUserFromRequest(request);
+    const user = await getUserFromRequest(request, { skipSessionCheck: true });
     const token = getTokenFromRequest(request);
     const { sessionId } = (await request.json()) as { sessionId?: string };
     if (!sessionId) {
@@ -72,6 +78,14 @@ export async function POST(request: Request) {
       const minted = await mintSessionForEmail(email);
       if (!minted) {
         return NextResponse.json({ error: 'Could not sign you in' }, { status: 500 });
+      }
+
+      if (!isMultiDeviceEmail(email)) {
+        const authSessionId = getSessionIdFromAccessToken(minted.access_token);
+        if (authSessionId) {
+          await registerActiveAuthSession(userId, authSessionId);
+          await signOutOtherAuthSessions(minted.access_token);
+        }
       }
 
       return NextResponse.json({

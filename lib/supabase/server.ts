@@ -1,6 +1,14 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
+import {
+  getSessionIdFromAccessToken,
+  isMultiDeviceEmail,
+} from '@/lib/single-device-auth';
+
+export type GetUserOptions = {
+  skipSessionCheck?: boolean;
+};
 
 export function getServiceSupabase(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -24,7 +32,10 @@ export function getTokenFromRequest(request: Request): string | null {
   return auth?.startsWith('Bearer ') ? auth.slice(7) : null;
 }
 
-export async function getUserFromRequest(request: Request) {
+export async function getUserFromRequest(
+  request: Request,
+  options?: GetUserOptions
+) {
   const token = getTokenFromRequest(request);
   if (!token) return null;
 
@@ -35,7 +46,79 @@ export async function getUserFromRequest(request: Request) {
   const supabase = createClient(url, anonKey);
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) return null;
+
+  if (!options?.skipSessionCheck && !isMultiDeviceEmail(data.user.email)) {
+    const sessionId = getSessionIdFromAccessToken(token);
+    if (!sessionId || !(await isActiveAuthSession(data.user.id, sessionId))) {
+      return null;
+    }
+  }
+
   return data.user;
+}
+
+export async function isActiveAuthSession(
+  userId: string,
+  sessionId: string
+): Promise<boolean> {
+  const supabase = getServiceSupabase();
+  if (!supabase) return true;
+
+  const { data, error } = await supabase
+    .from('user_active_sessions')
+    .select('session_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Session check error:', error.message);
+    return true;
+  }
+
+  if (!data) return true;
+
+  return data.session_id === sessionId;
+}
+
+export async function registerActiveAuthSession(
+  userId: string,
+  sessionId: string
+): Promise<boolean> {
+  const supabase = getServiceSupabase();
+  if (!supabase) return false;
+
+  const { error } = await supabase.from('user_active_sessions').upsert(
+    {
+      user_id: userId,
+      session_id: sessionId,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' }
+  );
+
+  if (error) {
+    console.error('Register session error:', error.message);
+  }
+
+  return !error;
+}
+
+export async function signOutOtherAuthSessions(accessToken: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return;
+
+  const res = await fetch(`${url}/auth/v1/logout?scope=others`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      apikey: anonKey,
+    },
+  });
+
+  if (!res.ok) {
+    console.error('Sign out other sessions error:', res.status);
+  }
 }
 
 async function queryPurchaseExists(

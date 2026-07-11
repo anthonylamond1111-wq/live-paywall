@@ -287,3 +287,31 @@ body {
     transparent 70%
   );
 }
+
+@keyframes chat-glove-punch {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(-22deg) scale(1.2);
+  }
+  50% {
+    transform: rotate(18deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(-10deg) scale(1.15);
+  }
+}
+
+.chat-owner-glove {
+  display: inline-block;
+  animation: chat-glove-punch 0.75s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.55));
+}
+
+.chat-owner-name {
+  color: #fca5a5;
+  font-weight: 700;
+  text-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+}

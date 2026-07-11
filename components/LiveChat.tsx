@@ -5,6 +5,11 @@ import type { Session } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { isChatAdmin } from '@/lib/chat-admin';
 import {
+  OWNER_DISPLAY_NAME,
+  chatDisplayName,
+  isOwnerDisplayName,
+} from '@/lib/chat-display';
+import {
   chatUsernameError,
   getStoredChatUsername,
   storeChatUsername,
@@ -46,6 +51,17 @@ function isReactionOnly(body: string) {
   return QUICK_REACTIONS.includes(body.trim());
 }
 
+function ChatName({ name, isOwn }: { name: string; isOwn: boolean }) {
+  const owner = isOwnerDisplayName(name);
+
+  return (
+    <span className={`inline-flex items-center gap-1 ${isOwn && !owner ? 'text-red-300' : ''}`}>
+      {owner && <span className="chat-owner-glove text-sm leading-none">🥊</span>}
+      <span className={owner ? 'chat-owner-name normal-case tracking-normal' : ''}>{name}</span>
+    </span>
+  );
+}
+
 async function chatFetch(session: Session, path: string, init?: RequestInit) {
   return fetch(path, {
     ...init,
@@ -65,21 +81,28 @@ export default function LiveChat({
   beforeStreamStart = false,
   mobileExpanded = false,
 }: LiveChatProps) {
+  const isOwner = isChatAdmin(session.user.email);
+  const ownerChatName = chatDisplayName(session.user.email);
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [lastSentAt, setLastSentAt] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(isOwner);
   const [chatBlocked, setChatBlocked] = useState<string | null>(null);
   const [modBusy, setModBusy] = useState<string | null>(null);
-  const [chatUsername, setChatUsername] = useState<string | null>(null);
+  const [chatUsername, setChatUsername] = useState<string | null>(isOwner ? ownerChatName : null);
   const [usernameDraft, setUsernameDraft] = useState('');
   const [usernameError, setUsernameError] = useState('');
 
   useEffect(() => {
+    if (isOwner) {
+      setChatUsername(ownerChatName);
+      return;
+    }
     setChatUsername(getStoredChatUsername());
-  }, []);
+  }, [isOwner, ownerChatName]);
 
   const appendMessage = useCallback((message: ChatMessage) => {
     setMessages((prev) => {
@@ -117,11 +140,12 @@ export default function LiveChat({
       return;
     }
 
+    const displayName = isOwner ? ownerChatName : chatUsername;
     const tempId = `pending-${crypto.randomUUID()}`;
     const optimistic: ChatMessage = {
       id: tempId,
       user_id: session.user.id,
-      display_name: chatUsername,
+      display_name: displayName,
       body: trimmed.slice(0, MAX_MESSAGE_LENGTH),
       created_at: new Date().toISOString(),
     };
@@ -135,7 +159,7 @@ export default function LiveChat({
       method: 'POST',
       body: JSON.stringify({
         body: optimistic.body,
-        displayName: chatUsername,
+        displayName: isOwner ? undefined : chatUsername,
       }),
     })
       .then(async (res) => {
@@ -204,11 +228,11 @@ export default function LiveChat({
 
   useEffect(() => {
     let active = true;
-    setIsAdmin(isChatAdmin(session.user.email));
+    setIsAdmin(isOwner);
 
     const loadMessages = async () => {
       try {
-        const res = await chatFetch(session, '/api/chat');
+        const res = await chatFetch(session, '/api/chat?live=1');
         const data = await res.json();
 
         if (!active) return;
@@ -220,7 +244,7 @@ export default function LiveChat({
         }
 
         setMessages(data.messages ?? []);
-        setIsAdmin(data.isAdmin ?? isChatAdmin(session.user.email));
+        setIsAdmin(data.isAdmin ?? isOwner);
         if (data.chatBlock?.message) {
           setChatBlocked(data.chatBlock.message);
         }
@@ -253,7 +277,7 @@ export default function LiveChat({
       active = false;
       void supabase.removeChannel(channel);
     };
-  }, [appendMessage, session]);
+  }, [appendMessage, isOwner, session]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -281,6 +305,7 @@ export default function LiveChat({
 
   const uniqueChatters = new Set(messages.map((m) => m.user_id)).size;
   const canSend = !chatBlocked && !!chatUsername;
+  const needsUsername = !chatBlocked && !chatUsername && !isOwner;
 
   return (
     <div
@@ -360,9 +385,7 @@ export default function LiveChat({
               >
                 {!reactionOnly && (
                   <div className="mb-1 flex items-center gap-2 text-[10px] uppercase tracking-wide text-gray-400">
-                    <span className={isOwn ? 'text-red-300' : 'text-gray-300'}>
-                      {message.display_name}
-                    </span>
+                    <ChatName name={message.display_name} isOwn={isOwn} />
                     <span>{formatTime(message.created_at)}</span>
                   </div>
                 )}
@@ -407,7 +430,7 @@ export default function LiveChat({
         })}
       </div>
 
-      <form onSubmit={handleSend} className="border-t border-zinc-800 bg-zinc-900/80 p-3">
+      <div className="border-t border-zinc-800 bg-zinc-900/80 p-3">
         {chatBlocked && (
           <p className="mb-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
             {chatBlocked}
@@ -418,7 +441,7 @@ export default function LiveChat({
           <p className="mb-2 text-xs text-red-400">{error}</p>
         )}
 
-        {!chatBlocked && !chatUsername && (
+        {needsUsername && (
           <form
             onSubmit={handleUsernameSubmit}
             className="rounded-xl border border-zinc-700 bg-black/40 p-4"
@@ -459,57 +482,65 @@ export default function LiveChat({
         {!chatBlocked && chatUsername && (
           <>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-500">
+              <p className="flex items-center gap-1 text-xs text-gray-500">
                 Chatting as{' '}
-                <span className="font-semibold text-gray-300">{chatUsername}</span>
+                {isOwner ? (
+                  <ChatName name={chatUsername} isOwn={false} />
+                ) : (
+                  <span className="font-semibold text-gray-300">{chatUsername}</span>
+                )}
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setChatUsername(null);
-                  setUsernameDraft('');
-                }}
-                className="text-[10px] text-gray-600 underline transition hover:text-gray-400"
-              >
-                Change name
-              </button>
-            </div>
-
-            <div className="mb-2 flex gap-1">
-              {QUICK_REACTIONS.map((emoji) => (
+              {!isOwner && (
                 <button
-                  key={emoji}
                   type="button"
-                  disabled={!canSend}
-                  onClick={() => sendMessage(emoji)}
-                  className="rounded-lg px-2 py-1 text-lg transition hover:bg-zinc-800 disabled:opacity-50"
+                  onClick={() => {
+                    setChatUsername(null);
+                    setUsernameDraft('');
+                  }}
+                  className="text-[10px] text-gray-600 underline transition hover:text-gray-400"
                 >
-                  {emoji}
+                  Change name
                 </button>
-              ))}
+              )}
             </div>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                maxLength={MAX_MESSAGE_LENGTH}
-                placeholder="Message the room…"
-                disabled={!canSend}
-                className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm text-white outline-none transition focus:border-red-500 disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={!canSend || !draft.trim()}
-                className="shrink-0 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-gray-100 disabled:opacity-50"
-              >
-                Send
-              </button>
-            </div>
+            <form onSubmit={handleSend}>
+              <div className="mb-2 flex gap-1">
+                {QUICK_REACTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    disabled={!canSend}
+                    onClick={() => sendMessage(emoji)}
+                    className="rounded-lg px-2 py-1 text-lg transition hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  maxLength={MAX_MESSAGE_LENGTH}
+                  placeholder="Message the room…"
+                  disabled={!canSend}
+                  className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm text-white outline-none transition focus:border-red-500 disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={!canSend || !draft.trim()}
+                  className="shrink-0 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-gray-100 disabled:opacity-50"
+                >
+                  Send
+                </button>
+              </div>
+            </form>
           </>
         )}
-      </form>
+      </div>
     </div>
   );
 }

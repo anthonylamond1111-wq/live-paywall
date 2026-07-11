@@ -19,7 +19,7 @@ export function getStoredChatUsername(): string | null {
   if (typeof window === 'undefined') return null;
   const value = localStorage.getItem(STORAGE_KEY)?.trim();
   if (!value) return null;
-  return sanitizeChatUsername(value) ? value : null;
+  return sanitizeChatUsername(value);
 }
 
 export function storeChatUsername(username: string): string | null {

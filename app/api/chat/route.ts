@@ -47,7 +47,7 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from('chat_messages')
     .select('id, user_id, display_name, body, created_at')
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(MESSAGE_LIMIT);
 
   if (error) {
@@ -55,8 +55,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Could not load chat' }, { status: 500 });
   }
 
+  const messages = (data ?? []).slice().reverse();
+
   return NextResponse.json({
-    messages: data ?? [],
+    messages,
     isAdmin: isChatAdmin(user.email),
     chatBlock: block.blocked ? block : null,
   });

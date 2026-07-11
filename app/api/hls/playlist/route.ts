@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getStreamUrl } from '@/lib/constants';
+import { canProxyStream } from '@/lib/hls-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,11 @@ export async function GET(request: Request) {
 
   if (!isAllowedUrl(target)) {
     return NextResponse.json({ error: 'Invalid stream URL' }, { status: 400 });
+  }
+
+  const allowed = await canProxyStream(request, target);
+  if (!allowed) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {

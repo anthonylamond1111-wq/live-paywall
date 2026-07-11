@@ -15,17 +15,6 @@ function formatCountdown(seconds: number) {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-function getRemainingSeconds(duration: number) {
-  if (typeof window === 'undefined') return duration;
-  if (sessionStorage.getItem(PREVIEW_EXPIRED_KEY) === '1') return 0;
-
-  const startedAt = sessionStorage.getItem(PREVIEW_START_KEY);
-  if (!startedAt) return duration;
-
-  const elapsed = Math.floor((Date.now() - Number(startedAt)) / 1000);
-  return Math.max(0, duration - elapsed);
-}
-
 type PreviewStreamProps = {
   onPreviewExpired?: () => void;
 };
@@ -35,37 +24,92 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
   const [remaining, setRemaining] = useState(PREVIEW_SECONDS);
   const [expired, setExpired] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [isLive, setIsLive] = useState(false);
-  const previewStartedTracked = useRef(false);
-  const { isBeforeStart } = useStreamSchedule();
+  const [countdownActive, setCountdownActive] = useState(false);
+  const previewStartedRef = useRef(false);
 
-  const handleLiveChange = useCallback((live: boolean) => {
-    setIsLive(live);
-    if (!live || typeof window === 'undefined') return;
+  const startPreviewTimer = useCallback(async () => {
+    if (previewStartedRef.current) return;
+    if (typeof window === 'undefined') return;
     if (sessionStorage.getItem(PREVIEW_EXPIRED_KEY) === '1') return;
-    if (!previewStartedTracked.current) {
-      previewStartedTracked.current = true;
-      trackAnalytics(AnalyticsEvents.PREVIEW_STARTED);
-    }
-    if (!sessionStorage.getItem(PREVIEW_START_KEY)) {
+
+    previewStartedRef.current = true;
+
+    try {
+      const res = await fetch('/api/preview', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 403 && data.expired) {
+        sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
+        setExpired(true);
+        setRemaining(0);
+        setPreviewUrl(null);
+        return;
+      }
+
+      if (!res.ok) return;
+
       sessionStorage.setItem(PREVIEW_START_KEY, String(Date.now()));
-      setRemaining(PREVIEW_SECONDS);
+      trackAnalytics(AnalyticsEvents.PREVIEW_STARTED);
+      setCountdownActive(true);
+
+      const seconds = typeof data.seconds === 'number' ? data.seconds : PREVIEW_SECONDS;
+      setRemaining(seconds);
+      if (data.url) setPreviewUrl(data.url);
+    } catch {
+      previewStartedRef.current = false;
     }
   }, []);
+
+  const handleLiveChange = useCallback(
+    (live: boolean) => {
+      setIsLive(live);
+      if (!live) return;
+      void startPreviewTimer();
+    },
+    [startPreviewTimer]
+  );
 
   useEffect(() => {
     let active = true;
 
     const loadPreview = async () => {
       try {
-        const res = await fetch('/api/preview');
-        if (!res.ok) return;
+        const res = await fetch('/api/preview', { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
 
-        const { url, seconds } = await res.json();
         if (!active) return;
 
-        const duration = typeof seconds === 'number' ? seconds : PREVIEW_SECONDS;
-        const left = getRemainingSeconds(duration);
+        if (res.status === 403 && data.expired) {
+          sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
+          setExpired(true);
+          setRemaining(0);
+          return;
+        }
+
+        if (!res.ok) {
+          setLoadError(data.error ?? 'Preview unavailable right now.');
+          return;
+        }
+
+        const { url, seconds, started } = data as {
+          url?: string;
+          seconds?: number;
+          started?: boolean;
+        };
+        const left = typeof seconds === 'number' ? seconds : PREVIEW_SECONDS;
+
+        if (started) {
+          previewStartedRef.current = true;
+          setCountdownActive(true);
+          if (!sessionStorage.getItem(PREVIEW_START_KEY)) {
+            sessionStorage.setItem(PREVIEW_START_KEY, String(Date.now()));
+          }
+        }
 
         if (left <= 0) {
           sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
@@ -74,7 +118,7 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
           return;
         }
 
-        setPreviewUrl(url);
+        if (url) setPreviewUrl(url);
         setRemaining(left);
       } finally {
         if (active) setLoading(false);
@@ -87,8 +131,10 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
     };
   }, []);
 
+  const { isBeforeStart } = useStreamSchedule();
+
   useEffect(() => {
-    if (expired || !previewUrl || !isLive) return;
+    if (expired || !previewUrl || !countdownActive) return;
 
     const timer = window.setInterval(() => {
       setRemaining((current) => {
@@ -105,10 +151,10 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [expired, previewUrl, isLive, onPreviewExpired]);
+  }, [expired, previewUrl, countdownActive, onPreviewExpired]);
 
-  const urgent = remaining <= 15 && !expired && isLive;
-  const previewActive = isLive && !expired;
+  const urgent = remaining <= 15 && !expired && countdownActive;
+  const previewActive = isLive && !expired && countdownActive;
 
   return (
     <div className="preview-frame group relative overflow-hidden rounded-2xl sm:rounded-3xl">
@@ -148,6 +194,13 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
                 <div className="absolute inset-0 h-12 w-12 animate-ping rounded-full border border-red-500/20" />
               </div>
               <p className="text-sm text-gray-500">Loading preview…</p>
+            </div>
+          )}
+
+          {!loading && loadError && !expired && (
+            <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-gradient-to-b from-zinc-950 to-black px-6 text-center">
+              <p className="text-lg font-semibold text-white">Preview unavailable</p>
+              <p className="text-sm text-gray-400">{loadError}</p>
             </div>
           )}
 

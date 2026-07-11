@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getStripe } from '@/lib/stripe';
+import { accessCookieOptions } from '@/lib/access-cookie';
 import {
   getTokenFromRequest,
   getUserFromRequest,
@@ -23,7 +25,10 @@ export async function POST(request: Request) {
 
     const session = await getStripe().checkout.sessions.retrieve(sessionId);
     if (session.payment_status !== 'paid') {
-      return NextResponse.json({ paid: false });
+      return NextResponse.json({
+        paid: false,
+        status: session.payment_status,
+      });
     }
 
     if (!stripeSessionMatchesUser(session, user)) {
@@ -33,7 +38,14 @@ export async function POST(request: Request) {
       );
     }
 
-    await recordPurchase(user.id, session.id);
+    const saved = await recordPurchase(user.id, session.id);
+    if (!saved) {
+      return NextResponse.json({ error: 'Could not save purchase' }, { status: 500 });
+    }
+
+    const cookieStore = await cookies();
+    cookieStore.set(accessCookieOptions(sessionId));
+
     const paid = await resolveUserAccess(user, token);
 
     return NextResponse.json({ paid });

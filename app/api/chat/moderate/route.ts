@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server';
 import { isChatAdmin } from '@/lib/chat-admin';
 import {
   getServiceSupabase,
-  getTokenFromRequest,
   getUserFromRequest,
-  resolveUserAccess,
 } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -19,12 +17,6 @@ async function requireAdmin(request: Request) {
 
   if (!isChatAdmin(user.email)) {
     return { error: NextResponse.json({ error: 'Admin only' }, { status: 403 }) };
-  }
-
-  const token = getTokenFromRequest(request);
-  const paid = await resolveUserAccess(user, token);
-  if (!paid) {
-    return { error: NextResponse.json({ error: 'Payment required' }, { status: 402 }) };
   }
 
   return { user };

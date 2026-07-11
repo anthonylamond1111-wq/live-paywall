@@ -45,12 +45,25 @@ export default function UFCAccess() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [purchaseJustCompleted, setPurchaseJustCompleted] = useState(false);
-  const [previewExpired, setPreviewExpired] = useState(false);
+  const [previewExpired, setPreviewExpired] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('ufc_preview_expired') === '1';
+  });
 
   const unlockStream = useCallback(async (activeSession: Session) => {
     const streamRes = await authFetch(activeSession, '/api/stream');
     if (!streamRes.ok) {
-      setView('pay');
+      const data = (await streamRes.json().catch(() => ({}))) as { error?: string };
+      if (streamRes.status === 402) {
+        setMessage('Payment required to watch the stream.');
+        setView('pay');
+      } else if (streamRes.status === 401) {
+        setMessage('Your session expired. Please log in again.');
+        setView('auth');
+      } else {
+        setMessage(data.error ?? 'Could not load the stream. Refresh and try again.');
+        setView('success');
+      }
       return false;
     }
 
@@ -79,11 +92,16 @@ export default function UFCAccess() {
         });
 
         if (verifyRes.ok) {
-          const { paid } = await verifyRes.json();
+          const { paid, status } = await verifyRes.json();
           if (paid) {
             window.history.replaceState({}, '', window.location.pathname);
             setPurchaseJustCompleted(true);
             setView('success');
+            return;
+          }
+          if (status && status !== 'paid') {
+            setMessage('Payment is still processing. Refresh in a minute.');
+            setView('pay');
             return;
           }
         }
@@ -117,13 +135,6 @@ export default function UFCAccess() {
     },
     []
   );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (sessionStorage.getItem('ufc_preview_expired') === '1') {
-      setPreviewExpired(true);
-    }
-  }, []);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -228,6 +239,12 @@ export default function UFCAccess() {
     try {
       const res = await authFetch(session, '/api/checkout', { method: 'POST' });
       const data = await res.json();
+
+      if (res.status === 409 && data.alreadyPaid) {
+        setMessage('You already have access for tonight.');
+        await checkAccess(session);
+        return;
+      }
 
       if (!res.ok || !data.url) {
         setMessage(data.error ?? 'Could not start payment.');

@@ -28,7 +28,11 @@ export async function POST(request: Request) {
     if (session.payment_status === 'paid') {
       const userId = session.metadata?.user_id ?? session.client_reference_id;
       if (userId) {
-        await recordPurchase(userId, session.id);
+        const saved = await recordPurchase(userId, session.id);
+        if (!saved) {
+          console.error('Webhook failed to record purchase:', session.id);
+          return NextResponse.json({ error: 'Failed to record purchase' }, { status: 500 });
+        }
       }
     }
   }

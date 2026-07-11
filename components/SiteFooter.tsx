@@ -1,5 +1,3 @@
-import { EVENT } from '@/lib/event';
-
 export default function SiteFooter() {
   const year = new Date().getFullYear();
 

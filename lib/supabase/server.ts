@@ -126,8 +126,6 @@ function isPaidCheckoutSession(session: Stripe.Checkout.Session) {
 export async function findPaidStripeSessionForUser(
   user: User
 ): Promise<Stripe.Checkout.Session | null> {
-  if (!user.email) return null;
-
   const stripe = getStripe();
   const since = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
   let startingAfter: string | undefined;
@@ -158,8 +156,7 @@ export async function syncStripePurchasesForUser(user: User): Promise<boolean> {
   const checkoutSession = await findPaidStripeSessionForUser(user);
   if (!checkoutSession) return false;
 
-  await recordPurchase(user.id, checkoutSession.id);
-  return true;
+  return recordPurchase(user.id, checkoutSession.id);
 }
 
 export async function resolveUserAccess(

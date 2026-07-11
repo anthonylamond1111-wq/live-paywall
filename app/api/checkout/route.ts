@@ -6,7 +6,11 @@ import {
   STRIPE_WALLET_OPTIONS,
 } from '@/lib/stripe-checkout';
 import { getStripe } from '@/lib/stripe';
-import { getUserFromRequest } from '@/lib/supabase/server';
+import {
+  getTokenFromRequest,
+  getUserFromRequest,
+  resolveUserAccess,
+} from '@/lib/supabase/server';
 
 function isStripeTestMode() {
   return (process.env.STRIPE_SECRET_KEY ?? '').startsWith('sk_test_');
@@ -46,6 +50,14 @@ export async function POST(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) {
       return NextResponse.json({ error: 'Please log in first' }, { status: 401 });
+    }
+
+    const token = getTokenFromRequest(request);
+    if (await resolveUserAccess(user, token)) {
+      return NextResponse.json(
+        { error: 'You already have access for this event', alreadyPaid: true },
+        { status: 409 }
+      );
     }
 
     const priceId = await resolvePriceId();

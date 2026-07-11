@@ -70,14 +70,15 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
     };
 
     document.addEventListener('fullscreenchange', onFullscreenChange);
-    videoRef.current?.addEventListener('webkitbeginfullscreen', onFullscreenChange);
-    videoRef.current?.addEventListener('webkitendfullscreen', onFullscreenChange);
+    const video = videoRef.current;
+    video?.addEventListener('webkitbeginfullscreen', onFullscreenChange);
+    video?.addEventListener('webkitendfullscreen', onFullscreenChange);
 
     return () => {
       document.body.style.overflow = '';
       document.removeEventListener('fullscreenchange', onFullscreenChange);
-      videoRef.current?.removeEventListener('webkitbeginfullscreen', onFullscreenChange);
-      videoRef.current?.removeEventListener('webkitendfullscreen', onFullscreenChange);
+      video?.removeEventListener('webkitbeginfullscreen', onFullscreenChange);
+      video?.removeEventListener('webkitendfullscreen', onFullscreenChange);
     };
   }, [playerMode]);
 
@@ -188,6 +189,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
             src={streamUrl}
             fill={isFullscreen}
             videoRef={videoRef}
+            accessToken={session.access_token}
             showCastButton
             onLiveChange={setIsLive}
             onHealthChange={setHealth}

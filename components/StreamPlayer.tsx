@@ -16,6 +16,7 @@ type StreamPlayerProps = {
   src: string;
   fill?: boolean;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
+  accessToken?: string | null;
   onRequestFullscreen?: () => void;
   onLiveChange?: (live: boolean) => void;
   onHealthChange?: (status: StreamHealthStatus) => void;
@@ -37,6 +38,7 @@ export default function StreamPlayer({
   src,
   fill = false,
   videoRef: externalVideoRef,
+  accessToken,
   onRequestFullscreen,
   onLiveChange,
   onHealthChange,
@@ -133,6 +135,7 @@ export default function StreamPlayer({
     };
 
     if (Hls.isSupported()) {
+      const useProxy = src.includes('/api/hls/');
       hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
@@ -142,6 +145,14 @@ export default function StreamPlayer({
         maxLiveSyncPlaybackRate: 1.25,
         maxBufferLength: 20,
         maxMaxBufferLength: 30,
+        xhrSetup: (xhr, url) => {
+          if (useProxy && url.includes('/api/hls/')) {
+            xhr.withCredentials = true;
+            if (accessToken) {
+              xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+            }
+          }
+        },
       });
       hlsRef.current = hls;
 
@@ -205,6 +216,7 @@ export default function StreamPlayer({
     }
 
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.crossOrigin = 'use-credentials';
       video.src = src;
       const onNativeMetadata = () => {
         startPlayback();
@@ -225,7 +237,7 @@ export default function StreamPlayer({
     video.removeEventListener('loadeddata', signalLiveIfPicture);
     video.removeEventListener('playing', signalLiveIfPicture);
     setError('This browser does not support live stream playback.');
-  }, [src, onLiveChange, onHealthChange]);
+  }, [src, onLiveChange, onHealthChange, accessToken]);
 
   const handleUnmute = () => {
     const video = videoRef.current;

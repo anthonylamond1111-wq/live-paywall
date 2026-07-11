@@ -16,6 +16,7 @@ import SiteFooter from '@/components/SiteFooter';
 import StreamView from '@/components/StreamView';
 import SuccessScreen from '@/components/SuccessScreen';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
 type View = 'loading' | 'auth' | 'pay' | 'success' | 'stream';
 
@@ -191,6 +192,11 @@ export default function UFCAccess() {
       const activeSession = result.data.session;
       if (activeSession) {
         setSession(activeSession);
+        trackAnalytics(
+          authMode === 'signup'
+            ? AnalyticsEvents.SIGNUP_SUCCESS
+            : AnalyticsEvents.LOGIN_SUCCESS
+        );
         await checkAccess(activeSession);
       }
     } catch {
@@ -228,6 +234,7 @@ export default function UFCAccess() {
         return;
       }
 
+      trackAnalytics(AnalyticsEvents.CHECKOUT_START);
       window.location.href = data.url;
     } catch {
       setMessage('Payment could not be started.');
@@ -363,7 +370,6 @@ export default function UFCAccess() {
             password={password}
             message={message}
             busy={busy}
-            loading={view === 'loading' && !isLoggedIn}
             previewExpired={previewExpired}
             onEmailChange={setEmail}
             onPasswordChange={setPassword}

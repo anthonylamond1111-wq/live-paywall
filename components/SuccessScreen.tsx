@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import { fireConfetti } from '@/lib/confetti';
 import { EVENT } from '@/lib/event';
+import ShareButton from '@/components/ShareButton';
+import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
 type SuccessScreenProps = {
   email?: string | null;
@@ -20,6 +22,7 @@ export default function SuccessScreen({
   useEffect(() => {
     if (purchaseJustCompleted) {
       fireConfetti();
+      trackAnalytics(AnalyticsEvents.PURCHASE);
     }
   }, [purchaseJustCompleted]);
 
@@ -63,6 +66,10 @@ export default function SuccessScreen({
       >
         {busy ? 'Loading stream…' : 'Watch live stream'}
       </button>
+
+      <div className="mt-4 flex justify-center">
+        <ShareButton variant="promo" />
+      </div>
     </div>
   );
 }

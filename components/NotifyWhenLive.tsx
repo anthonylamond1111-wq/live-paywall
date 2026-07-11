@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { hasStreamStarted } from '@/lib/event';
+import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
 const NOTIFY_KEY = 'ufc_notify_enabled';
 const EMAIL_KEY = 'ufc_notify_email';
@@ -81,6 +82,7 @@ export default function NotifyWhenLive() {
 
       localStorage.setItem(EMAIL_KEY, trimmed);
       setStatus('done');
+      trackAnalytics(AnalyticsEvents.NOTIFY_SIGNUP);
       setMessage('You\'re on the list — we\'ll notify you when the stream goes live.');
     } catch {
       setStatus('error');

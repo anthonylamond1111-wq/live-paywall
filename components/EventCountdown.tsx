@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getEventCountdown } from '@/lib/event';
+import { EVENT, getEventCountdown } from '@/lib/event';
 
 function pad(n: number) {
   return n.toString().padStart(2, '0');
@@ -36,6 +36,7 @@ export default function EventCountdown() {
           </span>
         ))}
       </p>
+      <p className="mt-2 text-xs text-gray-600">{EVENT.streamStartLabel}</p>
     </div>
   );
 }

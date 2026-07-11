@@ -1,6 +1,7 @@
 import { CHECKOUT_LABEL } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
 import PaymentBadges from '@/components/PaymentBadges';
+import ShareButton from '@/components/ShareButton';
 import SocialProof from '@/components/SocialProof';
 
 type PreviewConversionProps = {
@@ -57,6 +58,12 @@ export default function PreviewConversion({
 
       <div className="mt-4 space-y-3">
         <SocialProof />
+        <div className="flex justify-center">
+          <ShareButton
+            variant="promo"
+            className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-2.5 text-sm text-gray-300 transition hover:border-red-500 sm:w-auto"
+          />
+        </div>
         <PaymentBadges />
       </div>
     </div>

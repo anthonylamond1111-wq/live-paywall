@@ -66,6 +66,10 @@ export const EVENT = {
   ],
   faq: [
     {
+      q: 'Is this the official UFC broadcast?',
+      a: 'No — UFC Access is an independent private live stream. We are not affiliated with UFC or any official broadcast partner. You get our HD feed and live chat for a one-time fee.',
+    },
+    {
       q: 'Will it work on my phone or TV?',
       a: 'Yes — watch on any modern phone, tablet, or computer. For TV, use AirPlay (iPhone), Chromecast (Android Chrome), or connect your laptop via HDMI.',
     },

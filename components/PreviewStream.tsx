@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import StreamPlayer from '@/components/StreamPlayer';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import { PREVIEW_SECONDS } from '@/lib/constants';
+import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
 const PREVIEW_START_KEY = 'ufc_preview_started_at';
 const PREVIEW_EXPIRED_KEY = 'ufc_preview_expired';
@@ -35,12 +36,17 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
   const [expired, setExpired] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
+  const previewStartedTracked = useRef(false);
   const { isBeforeStart } = useStreamSchedule();
 
   const handleLiveChange = useCallback((live: boolean) => {
     setIsLive(live);
     if (!live || typeof window === 'undefined') return;
     if (sessionStorage.getItem(PREVIEW_EXPIRED_KEY) === '1') return;
+    if (!previewStartedTracked.current) {
+      previewStartedTracked.current = true;
+      trackAnalytics(AnalyticsEvents.PREVIEW_STARTED);
+    }
     if (!sessionStorage.getItem(PREVIEW_START_KEY)) {
       sessionStorage.setItem(PREVIEW_START_KEY, String(Date.now()));
       setRemaining(PREVIEW_SECONDS);
@@ -90,6 +96,7 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
           sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
           setExpired(true);
           setPreviewUrl(null);
+          trackAnalytics(AnalyticsEvents.PREVIEW_EXPIRED);
           onPreviewExpired?.();
           return 0;
         }

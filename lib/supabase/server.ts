@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
+import { hasFreeAccess } from '@/lib/free-access';
 import {
   getSessionIdFromAccessToken,
   isMultiDeviceEmail,
@@ -248,6 +249,10 @@ export async function resolveUserAccess(
   user: User,
   accessToken?: string | null
 ): Promise<boolean> {
+  if (hasFreeAccess(user.email)) {
+    return true;
+  }
+
   if (await userHasAccess(user.id, accessToken)) {
     return true;
   }

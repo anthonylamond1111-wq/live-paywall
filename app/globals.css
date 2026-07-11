@@ -84,6 +84,20 @@ body {
   animation: brand-intro-fade 2.2s ease forwards;
 }
 
+@keyframes intro-tap-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.intro-tap-hint {
+  animation: intro-tap-pulse 1.4s ease-in-out infinite;
+}
+
 @keyframes brand-flow {
   0% {
     background-position: 0% center;

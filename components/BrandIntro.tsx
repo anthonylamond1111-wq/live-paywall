@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import BrandLogo from '@/components/BrandLogo';
-import { playBrandIntroSound } from '@/lib/intro-sound';
+import { playBrandIntroSound, preloadIntroSound } from '@/lib/intro-sound';
 
 const INTRO_KEY = 'ufc_access_intro_seen_v2';
 
@@ -24,6 +24,7 @@ export default function BrandIntro() {
     if (sessionStorage.getItem(INTRO_KEY) === '1') return;
 
     setVisible(true);
+    preloadIntroSound();
 
     void playBrandIntroSound(false);
 

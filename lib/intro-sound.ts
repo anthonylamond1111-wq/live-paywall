@@ -1,4 +1,8 @@
+import { INTRO_SOUND_URL, INTRO_SOUND_VOLUME } from '@/lib/constants';
+
 let played = false;
+let preloadedAudio: HTMLAudioElement | null = null;
+let customSoundAvailable: boolean | null = null;
 
 function createAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -7,6 +11,56 @@ function createAudioContext(): AudioContext | null {
     (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctx) return null;
   return new Ctx();
+}
+
+/** Call on intro mount so your file is ready when the user taps. */
+export function preloadIntroSound() {
+  if (typeof window === 'undefined' || !INTRO_SOUND_URL || preloadedAudio) return;
+
+  const audio = new Audio(INTRO_SOUND_URL);
+  audio.preload = 'auto';
+  audio.volume = INTRO_SOUND_VOLUME;
+  audio.addEventListener(
+    'canplaythrough',
+    () => {
+      customSoundAvailable = true;
+    },
+    { once: true }
+  );
+  audio.addEventListener(
+    'error',
+    () => {
+      customSoundAvailable = false;
+    },
+    { once: true }
+  );
+  audio.load();
+  preloadedAudio = audio;
+}
+
+async function playCustomIntroSound(fromUserGesture: boolean): Promise<boolean> {
+  if (!INTRO_SOUND_URL) return false;
+  if (customSoundAvailable === false) return false;
+
+  const audio = preloadedAudio ?? new Audio(INTRO_SOUND_URL);
+  audio.volume = INTRO_SOUND_VOLUME;
+  audio.currentTime = 0;
+
+  try {
+    await audio.play();
+    customSoundAvailable = true;
+    return true;
+  } catch {
+    if (!fromUserGesture) return false;
+    try {
+      await audio.play();
+      customSoundAvailable = true;
+      return true;
+    } catch {
+      customSoundAvailable = false;
+      return false;
+    }
+  }
 }
 
 function scheduleHit(ctx: AudioContext, startAt: number) {
@@ -35,24 +89,9 @@ function scheduleHit(ctx: AudioContext, startAt: number) {
   stingGain.connect(ctx.destination);
   stingOsc.start(startAt + 0.05);
   stingOsc.stop(startAt + 0.75);
-
-  const subOsc = ctx.createOscillator();
-  const subGain = ctx.createGain();
-  subOsc.type = 'square';
-  subOsc.frequency.setValueAtTime(55, startAt);
-  subGain.gain.setValueAtTime(0.0001, startAt);
-  subGain.gain.exponentialRampToValueAtTime(0.08, startAt + 0.03);
-  subGain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.25);
-  subOsc.connect(subGain);
-  subGain.connect(ctx.destination);
-  subOsc.start(startAt);
-  subOsc.stop(startAt + 0.28);
 }
 
-/** Fight-night impact — must run from a tap/click for mobile browsers. */
-export async function playBrandIntroSound(fromUserGesture = false): Promise<boolean> {
-  if (played) return true;
-
+async function playSynthIntroSound(fromUserGesture: boolean): Promise<boolean> {
   const ctx = createAudioContext();
   if (!ctx) return false;
 
@@ -69,7 +108,6 @@ export async function playBrandIntroSound(fromUserGesture = false): Promise<bool
     if (ctx.state !== 'running') return false;
 
     scheduleHit(ctx, ctx.currentTime + 0.02);
-    played = true;
 
     window.setTimeout(() => {
       void ctx.close();
@@ -79,6 +117,25 @@ export async function playBrandIntroSound(fromUserGesture = false): Promise<bool
   } catch {
     return false;
   }
+}
+
+/** Plays your uploaded sound, or the built-in hit if the file is missing. */
+export async function playBrandIntroSound(fromUserGesture = false): Promise<boolean> {
+  if (played) return true;
+
+  const customPlayed = await playCustomIntroSound(fromUserGesture);
+  if (customPlayed) {
+    played = true;
+    return true;
+  }
+
+  const synthPlayed = await playSynthIntroSound(fromUserGesture);
+  if (synthPlayed) {
+    played = true;
+    return true;
+  }
+
+  return false;
 }
 
 export function hasIntroSoundPlayed() {

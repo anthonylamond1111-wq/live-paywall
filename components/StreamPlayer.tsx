@@ -6,10 +6,11 @@ import { hasStreamStarted } from '@/lib/event';
 import { MAX_STREAM_HEIGHT } from '@/lib/constants';
 import {
   createStreamHlsConfig,
+  DESKTOP_HD_RAMP_BUFFER_SECONDS,
   getBufferedAheadSeconds,
-  getMaxAutoLevelIndex,
+  getEffectiveMaxHeight,
+  getMaxLevelIndex,
   getSafeStartLevel,
-  QUALITY_RAMP_BUFFER_SECONDS,
 } from '@/lib/hls-config';
 import type { StreamHealthStatus } from '@/components/StreamHealth';
 import CastToTvButton from '@/components/CastToTvButton';
@@ -151,8 +152,13 @@ export default function StreamPlayer({
     video.muted = true;
 
     let hls: Hls | null = null;
+    let lastQualityDropAt = 0;
 
     const dropQualityOnBuffer = () => {
+      const now = Date.now();
+      if (now - lastQualityDropAt < 4000) return;
+      lastQualityDropAt = now;
+
       onHealthChange?.('buffering');
       if (!hls) return;
       const level = hls.currentLevel === -1 ? hls.loadLevel : hls.currentLevel;
@@ -198,9 +204,12 @@ export default function StreamPlayer({
       });
       hlsRef.current = hls;
 
-      const tryRampToFullQuality = () => {
-        if (!hls || qualityRampedRef.current) return;
-        if (getBufferedAheadSeconds(video) < QUALITY_RAMP_BUFFER_SECONDS) return;
+      const tryUnlockHd = () => {
+        if (!hls || qualityRampedRef.current || isMobileDevice()) return;
+        if (getEffectiveMaxHeight() < 1080) return;
+        if (getBufferedAheadSeconds(video) < DESKTOP_HD_RAMP_BUFFER_SECONDS) return;
+
+        hls.autoLevelCapping = getMaxLevelIndex(hls.levels, getEffectiveMaxHeight());
         hls.currentLevel = -1;
         qualityRampedRef.current = true;
       };
@@ -209,18 +218,22 @@ export default function StreamPlayer({
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
-        const maxLevel = getMaxAutoLevelIndex(data.levels);
+        const maxHeight = getEffectiveMaxHeight();
+        const fullMaxLevel = getMaxLevelIndex(data.levels, maxHeight);
+        const startCapLevel = isMobileDevice()
+          ? fullMaxLevel
+          : getMaxLevelIndex(data.levels, Math.min(720, maxHeight));
         const qualityLevels: QualityLevel[] = data.levels
           .map((level, index) => ({
             index,
             label: level.height ? `${level.height}p` : `Level ${index + 1}`,
             height: level.height ?? 0,
           }))
-          .filter((level) => level.height <= MAX_STREAM_HEIGHT || level.height === 0)
+          .filter((level) => level.height <= maxHeight || level.height === 0)
           .map(({ index, label }) => ({ index, label }));
 
         setLevels(qualityLevels);
-        hls!.autoLevelCapping = maxLevel;
+        hls!.autoLevelCapping = startCapLevel;
         hls!.startLevel = getSafeStartLevel(data.levels);
         setCurrentLevel(hls?.currentLevel ?? -1);
         hls?.startLoad(-1);
@@ -230,7 +243,7 @@ export default function StreamPlayer({
 
       hls.on(Hls.Events.FRAG_BUFFERED, () => {
         syncToLiveEdge();
-        tryRampToFullQuality();
+        tryUnlockHd();
       });
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {

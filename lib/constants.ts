@@ -33,8 +33,14 @@ export const INTRO_SOUND_VOLUME = Math.min(
   Math.max(0, Number(process.env.NEXT_PUBLIC_INTRO_SOUND_VOLUME ?? '0.85'))
 );
 
-/** Max HLS quality height — default 1080p; set NEXT_PUBLIC_MAX_STREAM_HEIGHT to cap lower */
+/** Max HLS quality height on desktop — default 1080p */
 export const MAX_STREAM_HEIGHT = Math.max(
   360,
   Number(process.env.NEXT_PUBLIC_MAX_STREAM_HEIGHT ?? '1080')
+);
+
+/** Phones stay on 720p — much smoother on mobile data */
+export const MOBILE_MAX_STREAM_HEIGHT = Math.max(
+  360,
+  Number(process.env.NEXT_PUBLIC_MOBILE_MAX_STREAM_HEIGHT ?? '720')
 );

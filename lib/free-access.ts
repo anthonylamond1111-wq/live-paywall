@@ -1,4 +1,7 @@
-const DEFAULT_FREE_ACCESS_EMAILS = ['anthonylamond777@gmail.com'];
+const DEFAULT_FREE_ACCESS_EMAILS = [
+  'anthonylamond777@gmail.com',
+  'callanknox44@gmail.com',
+];
 
 function parseFreeAccessEmails(): Set<string> {
   const fromEnv = process.env.FREE_ACCESS_EMAILS;

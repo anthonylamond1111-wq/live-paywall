@@ -67,12 +67,32 @@ body {
   box-shadow: 0 0 20px rgba(220, 38, 38, 0.15);
 }
 
+@keyframes brand-intro-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes brand-intro-logo-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .brand-intro {
-  animation: brand-intro-fade 2.2s ease forwards;
+  animation: brand-intro-in 0.5s ease forwards;
 }
 
 .brand-intro-logo {
-  animation: brand-intro-fade 2.2s ease forwards;
+  animation: brand-intro-logo-in 0.8s ease forwards;
 }
 
 .brand-intro-line {
@@ -81,7 +101,7 @@ body {
 }
 
 .brand-intro-tag {
-  animation: brand-intro-fade 2.2s ease forwards;
+  animation: brand-intro-in 1s ease forwards;
 }
 
 @keyframes intro-tap-pulse {

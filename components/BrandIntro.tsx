@@ -2,37 +2,56 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import BrandLogo from '@/components/BrandLogo';
-import { playBrandIntroSound, preloadIntroSound } from '@/lib/intro-sound';
+import {
+  playBrandIntroSound,
+  preloadIntroSound,
+  waitForIntroSoundEnd,
+} from '@/lib/intro-sound';
 
-const INTRO_KEY = 'ufc_access_intro_seen_v2';
+const INTRO_KEY = 'ufc_access_intro_seen_v3';
 
 export default function BrandIntro() {
   const [visible, setVisible] = useState(false);
-  const enteredRef = useRef(false);
+  const [needsTap, setNeedsTap] = useState(false);
+  const runningRef = useRef(false);
 
-  const dismiss = useCallback((withSound: boolean) => {
-    if (enteredRef.current) return;
-    enteredRef.current = true;
+  const finishIntro = useCallback(() => {
     sessionStorage.setItem(INTRO_KEY, '1');
     setVisible(false);
-    if (withSound) {
-      void playBrandIntroSound(true);
-    }
+    setNeedsTap(false);
   }, []);
+
+  const runIntro = useCallback(
+    async (fromUserGesture: boolean) => {
+      if (runningRef.current) return;
+      runningRef.current = true;
+      setNeedsTap(false);
+
+      const started = await playBrandIntroSound(fromUserGesture);
+      if (!started) {
+        runningRef.current = false;
+        setNeedsTap(true);
+        return;
+      }
+
+      await waitForIntroSoundEnd();
+      finishIntro();
+      runningRef.current = false;
+    },
+    [finishIntro]
+  );
 
   useEffect(() => {
     if (sessionStorage.getItem(INTRO_KEY) === '1') return;
 
     setVisible(true);
     preloadIntroSound();
+    void runIntro(false);
+  }, [runIntro]);
 
-    void playBrandIntroSound(false);
-
-    const autoDismiss = window.setTimeout(() => dismiss(false), 4000);
-    return () => window.clearTimeout(autoDismiss);
-  }, [dismiss]);
-
-  const handleEnter = () => dismiss(true);
+  const handleEnter = () => {
+    void runIntro(true);
+  };
 
   if (!visible) return null;
 
@@ -49,9 +68,11 @@ export default function BrandIntro() {
         <p className="brand-intro-tag mt-4 text-xs uppercase tracking-[0.4em] text-gray-500">
           Live stream
         </p>
-        <p className="intro-tap-hint mt-8 text-[11px] font-semibold uppercase tracking-[0.35em] text-red-400/90">
-          Tap to enter
-        </p>
+        {needsTap && (
+          <p className="intro-tap-hint mt-8 text-[11px] font-semibold uppercase tracking-[0.35em] text-red-400/90">
+            Tap to enter
+          </p>
+        )}
       </div>
     </button>
   );

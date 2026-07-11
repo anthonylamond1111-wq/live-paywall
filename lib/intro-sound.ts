@@ -2,6 +2,7 @@ import { INTRO_SOUND_URL, INTRO_SOUND_VOLUME } from '@/lib/constants';
 
 let played = false;
 let preloadedAudio: HTMLAudioElement | null = null;
+let activeAudio: HTMLAudioElement | null = null;
 let customSoundAvailable: boolean | null = null;
 
 function createAudioContext(): AudioContext | null {
@@ -38,27 +39,49 @@ export function preloadIntroSound() {
   preloadedAudio = audio;
 }
 
-async function playCustomIntroSound(fromUserGesture: boolean): Promise<boolean> {
-  if (!INTRO_SOUND_URL) return false;
-  if (customSoundAvailable === false) return false;
+function waitForAudioEnd(audio: HTMLAudioElement): Promise<void> {
+  return new Promise((resolve) => {
+    if (audio.ended) {
+      resolve();
+      return;
+    }
+    const done = () => resolve();
+    audio.addEventListener('ended', done, { once: true });
+    audio.addEventListener('error', done, { once: true });
+  });
+}
+
+async function playCustomIntroSound(fromUserGesture: boolean): Promise<HTMLAudioElement | null> {
+  if (!INTRO_SOUND_URL) return null;
+  if (customSoundAvailable === false) return null;
+
+  if (activeAudio && !activeAudio.paused && !activeAudio.ended) {
+    return activeAudio;
+  }
 
   const audio = preloadedAudio ?? new Audio(INTRO_SOUND_URL);
   audio.volume = INTRO_SOUND_VOLUME;
-  audio.currentTime = 0;
+  if (audio.ended || audio.currentTime > 0) {
+    audio.currentTime = 0;
+  }
 
   try {
     await audio.play();
     customSoundAvailable = true;
-    return true;
+    activeAudio = audio;
+    preloadedAudio = audio;
+    return audio;
   } catch {
-    if (!fromUserGesture) return false;
+    if (!fromUserGesture) return null;
     try {
       await audio.play();
       customSoundAvailable = true;
-      return true;
+      activeAudio = audio;
+      preloadedAudio = audio;
+      return audio;
     } catch {
       customSoundAvailable = false;
-      return false;
+      return null;
     }
   }
 }
@@ -119,12 +142,14 @@ async function playSynthIntroSound(fromUserGesture: boolean): Promise<boolean> {
   }
 }
 
-/** Plays your uploaded sound, or the built-in hit if the file is missing. */
+/** Start intro audio. Returns false if autoplay blocked (user must tap). */
 export async function playBrandIntroSound(fromUserGesture = false): Promise<boolean> {
-  if (played) return true;
+  if (played && activeAudio && !activeAudio.paused && !activeAudio.ended) {
+    return true;
+  }
 
-  const customPlayed = await playCustomIntroSound(fromUserGesture);
-  if (customPlayed) {
+  const customAudio = await playCustomIntroSound(fromUserGesture);
+  if (customAudio) {
     played = true;
     return true;
   }
@@ -132,10 +157,23 @@ export async function playBrandIntroSound(fromUserGesture = false): Promise<bool
   const synthPlayed = await playSynthIntroSound(fromUserGesture);
   if (synthPlayed) {
     played = true;
+    activeAudio = null;
     return true;
   }
 
   return false;
+}
+
+/** Resolves when the current intro sound has fully finished. */
+export async function waitForIntroSoundEnd(): Promise<void> {
+  if (activeAudio) {
+    await waitForAudioEnd(activeAudio);
+    return;
+  }
+
+  if (played) {
+    await new Promise((resolve) => window.setTimeout(resolve, 1200));
+  }
 }
 
 export function hasIntroSoundPlayed() {
@@ -144,4 +182,5 @@ export function hasIntroSoundPlayed() {
 
 export function resetIntroSoundForTesting() {
   played = false;
+  activeAudio = null;
 }

@@ -317,7 +317,7 @@ export default function UFCAccess() {
     const checkoutEmail = session?.user.email ?? email.trim();
 
     if (!session && !checkoutEmail) {
-      document.getElementById('quick-pay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setMessage('Enter your email to continue to checkout.');
       return;
     }

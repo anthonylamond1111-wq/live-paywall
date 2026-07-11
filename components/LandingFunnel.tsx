@@ -11,7 +11,6 @@ import PreviewConversion from '@/components/PreviewConversion';
 import PreviewStream from '@/components/PreviewStream';
 import ShareButton from '@/components/ShareButton';
 import StickyUnlockCta from '@/components/StickyUnlockCta';
-import { CHECKOUT_LABEL } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
@@ -108,43 +107,6 @@ export default function LandingFunnel({
         />
 
         <div
-          id="quick-pay"
-          className="scroll-mt-28 rounded-2xl border-2 border-red-600/60 bg-gradient-to-b from-zinc-900 to-black p-6 shadow-lg shadow-red-900/10 sm:rounded-3xl sm:p-8"
-        >
-          <h2 className="text-center text-2xl font-bold text-white">Pay & watch live</h2>
-          <p className="mt-2 text-center text-sm text-gray-400">
-            {previewExpired
-              ? 'Your preview ended. Enter your email and checkout — Apple Pay & cards accepted.'
-              : 'Skip the wait — enter your email and go straight to secure checkout.'}
-          </p>
-
-          {message && <p className="mt-4 text-center text-sm text-red-400">{message}</p>}
-
-          <div className="mt-5 space-y-3">
-            <input
-              type="email"
-              required
-              placeholder="Email for your ticket"
-              value={email}
-              onChange={(e) => onEmailChange(e.target.value)}
-              className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3.5 text-base text-white outline-none transition focus:border-red-500"
-            />
-            <button
-              type="button"
-              onClick={handleUnlock}
-              disabled={busy}
-              className="w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
-            >
-              {busy ? 'Opening checkout…' : CHECKOUT_LABEL}
-            </button>
-          </div>
-
-          <p className="mt-4 text-center text-xs text-gray-600">
-            Access is saved to your email. Use the same email if you log in on another device.
-          </p>
-        </div>
-
-        <div
           id="signup"
           className="scroll-mt-28 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 sm:rounded-3xl sm:p-8"
         >
@@ -154,6 +116,8 @@ export default function LandingFunnel({
           <p className="mb-5 text-center text-sm text-gray-500">
             Optional — only needed if you want live chat on multiple devices.
           </p>
+
+          {message && <p className="mb-4 text-center text-sm text-red-400">{message}</p>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <input

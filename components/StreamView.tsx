@@ -180,11 +180,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
       >
         <div
           className={`relative min-w-0 ${
-            isFullscreen
-              ? 'h-full min-h-0'
-              : mobileTab === 'chat'
-                ? 'hidden lg:block'
-                : ''
+            isFullscreen ? 'h-full min-h-0' : ''
           }`}
         >
           <StreamPlayer
@@ -212,11 +208,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
         {!isFullscreen && (
           <div
             className={`min-h-0 ${
-              isTheatre
-                ? 'mx-auto w-full max-w-3xl'
-                : mobileTab === 'watch'
-                  ? 'hidden lg:block'
-                  : ''
+              isTheatre ? 'mx-auto w-full max-w-3xl' : 'w-full'
             }`}
           >
             <LiveChat
@@ -224,6 +216,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
               viewerCount={viewerCount}
               streamLive={isLive}
               beforeStreamStart={!isLive}
+              mobileExpanded={mobileTab === 'chat'}
             />
           </div>
         )}
@@ -242,16 +235,24 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
                   mobileTab === 'watch' ? 'text-red-400' : 'text-gray-500'
                 }`}
               >
-                Watch
+                Watch + chat
               </button>
               <button
                 type="button"
-                onClick={() => setMobileTab('chat')}
+                onClick={() => {
+                  setMobileTab('chat');
+                  window.setTimeout(() => {
+                    document.getElementById('live-chat-panel')?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    });
+                  }, 50);
+                }}
                 className={`flex-1 py-3 text-sm font-semibold ${
                   mobileTab === 'chat' ? 'text-red-400' : 'text-gray-500'
                 }`}
               >
-                Chat
+                Jump to chat
               </button>
             </div>
           </div>

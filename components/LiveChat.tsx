@@ -19,6 +19,7 @@ type LiveChatProps = {
   viewerCount?: number;
   streamLive?: boolean;
   beforeStreamStart?: boolean;
+  mobileExpanded?: boolean;
 };
 
 const MAX_MESSAGE_LENGTH = 500;
@@ -57,6 +58,7 @@ export default function LiveChat({
   viewerCount,
   streamLive = true,
   beforeStreamStart = false,
+  mobileExpanded = false,
 }: LiveChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -230,7 +232,14 @@ export default function LiveChat({
   const canSend = !chatBlocked && !sending;
 
   return (
-    <div className="flex h-72 min-h-[240px] flex-col overflow-hidden rounded-2xl border border-red-600/50 bg-zinc-900/90 shadow-lg shadow-red-900/5 landscape:h-[min(70dvh,100%)] landscape:min-h-[200px] sm:h-80 lg:h-[min(70vh,520px)] lg:min-h-[400px]">
+    <div
+      id="live-chat-panel"
+      className={`flex flex-col overflow-hidden rounded-2xl border border-red-600/50 bg-zinc-900/90 shadow-lg shadow-red-900/5 sm:rounded-3xl ${
+        mobileExpanded
+          ? 'h-[min(55dvh,420px)] min-h-[280px] lg:h-[min(70vh,520px)] lg:min-h-[400px]'
+          : 'h-72 min-h-[240px] sm:h-80 lg:h-[min(70vh,520px)] lg:min-h-[400px]'
+      }`}
+    >
       <div className="border-b border-zinc-800 bg-zinc-900/80 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">

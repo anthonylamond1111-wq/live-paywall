@@ -45,19 +45,6 @@ export async function GET(request: Request) {
 
   const block = await checkUserCanChat(supabase, user.id);
 
-  const url = new URL(request.url);
-  const liveOnly = url.searchParams.get('live') === '1';
-
-  if (liveOnly) {
-    await supabase.from('chat_messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
-    return NextResponse.json({
-      messages: [],
-      isAdmin: isChatAdmin(user.email),
-      chatBlock: block.blocked ? block : null,
-    });
-  }
-
   const { data, error } = await supabase
     .from('chat_messages')
     .select('id, user_id, display_name, body, created_at')

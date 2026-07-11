@@ -232,7 +232,7 @@ export default function LiveChat({
 
     const loadMessages = async () => {
       try {
-        const res = await chatFetch(session, '/api/chat?live=1');
+        const res = await chatFetch(session, '/api/chat');
         const data = await res.json();
 
         if (!active) return;

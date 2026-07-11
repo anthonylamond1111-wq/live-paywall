@@ -6,12 +6,14 @@ import { LANDING_FUNNEL_WIDTH } from '@/components/LandingFunnel';
 
 type StickyUnlockCtaProps = {
   visible: boolean;
+  isLoggedIn?: boolean;
   onUnlock: () => void;
   busy?: boolean;
 };
 
 export default function StickyUnlockCta({
   visible,
+  isLoggedIn = false,
   onUnlock,
   busy = false,
 }: StickyUnlockCtaProps) {
@@ -47,7 +49,7 @@ export default function StickyUnlockCta({
           disabled={busy}
           className="shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
         >
-          {busy ? '…' : 'Pay & watch'}
+          {busy ? '…' : isLoggedIn ? 'Pay & watch' : 'Create account'}
         </button>
       </div>
     </div>

@@ -31,10 +31,10 @@ type View = 'loading' | 'auth' | 'pay' | 'success' | 'stream';
 
 function friendlyAuthError(message: string): string {
   if (/rate limit|rate exceeded|too many.*email/i.test(message)) {
-    return 'Too many attempts — enter your email above the Pay button. No account needed to pay.';
+    return 'Too many attempts — wait a minute and try again.';
   }
   if (/invalid login credentials/i.test(message)) {
-    return 'Wrong password. Already paid? Use your checkout email and tap Create account to set a password.';
+    return 'Wrong email or password. Try again or create an account.';
   }
   return message;
 }
@@ -62,14 +62,6 @@ type VerifyResult = {
   needsPassword?: boolean;
   email?: string;
 };
-
-function promptPaidPasswordSetup(verified: VerifyResult, setEmail: (v: string) => void, setAuthMode: (m: 'login' | 'signup') => void, setMessage: (m: string) => void, setView: (v: View) => void) {
-  if (verified.email) setEmail(verified.email);
-  setAuthMode('signup');
-  setMessage('Payment successful! Create a password with the same email you paid with, then you can watch live.');
-  setView('auth');
-  window.history.replaceState({}, '', window.location.pathname);
-}
 
 async function verifyCheckoutSession(
   stripeSessionId: string,
@@ -209,7 +201,11 @@ export default function UFCAccess() {
         }
 
         if (verified.paid && verified.needsPassword) {
-          promptPaidPasswordSetup(verified, setEmail, setAuthMode, setMessage, setView);
+          if (verified.email) setEmail(verified.email);
+          setAuthMode('login');
+          setMessage('Payment successful! Log in with your account to watch live.');
+          setView('auth');
+          window.history.replaceState({}, '', window.location.pathname);
           return;
         }
 
@@ -284,7 +280,11 @@ export default function UFCAccess() {
         if (!mounted) return;
 
         if (verified.paid && verified.needsPassword) {
-          promptPaidPasswordSetup(verified, setEmail, setAuthMode, setMessage, setView);
+          if (verified.email) setEmail(verified.email);
+          setAuthMode('login');
+          setMessage('Payment successful! Log in with your account to watch live.');
+          setView('auth');
+          window.history.replaceState({}, '', window.location.pathname);
           return;
         }
 
@@ -314,16 +314,6 @@ export default function UFCAccess() {
         window.history.replaceState({}, '', window.location.pathname);
         setView('auth');
       } else {
-        const accessRes = await fetch('/api/access', { credentials: 'include' });
-        if (accessRes.ok) {
-          const accessData = (await accessRes.json()) as { paid?: boolean; guest?: boolean };
-          if (accessData.paid && accessData.guest) {
-            setAuthMode('signup');
-            setMessage('You already paid — create a password below using the same email from checkout.');
-            setView('auth');
-            return;
-          }
-        }
         setView('auth');
       }
     };
@@ -356,11 +346,10 @@ export default function UFCAccess() {
   }, []);
 
   const handleCheckout = useCallback(async () => {
-    const checkoutEmail = session?.user.email ?? email.trim();
-
-    if (!session && !checkoutEmail) {
-      document.getElementById('checkout-email')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setMessage('Enter your email above the Pay button — no account needed.');
+    if (!session) {
+      setAuthMode('signup');
+      document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setMessage('Create your account first, then pay below.');
       return;
     }
 
@@ -368,18 +357,14 @@ export default function UFCAccess() {
     setMessage('');
 
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (session) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
-
       const res = await fetch('/api/checkout', {
         method: 'POST',
         credentials: 'include',
-        headers,
-        body: JSON.stringify(session ? {} : { email: checkoutEmail }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({}),
       });
       const data = await res.json();
 
@@ -401,7 +386,7 @@ export default function UFCAccess() {
     } finally {
       setBusy(false);
     }
-  }, [session, email, checkAccess]);
+  }, [session, checkAccess]);
 
   const handleUnlock = useCallback(() => {
     void handleCheckout();
@@ -446,11 +431,9 @@ export default function UFCAccess() {
 
         setSession(signIn.data.session);
         trackAnalytics(AnalyticsEvents.SIGNUP_SUCCESS);
-        if (previewExpired) {
-          await handleCheckout();
-        } else {
-          await checkAccess(signIn.data.session);
-        }
+        setMessage('Account created — scroll down to pay and watch live.');
+        document.getElementById('pay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        await checkAccess(signIn.data.session);
         return;
       }
 
@@ -465,11 +448,7 @@ export default function UFCAccess() {
       if (activeSession) {
         setSession(activeSession);
         trackAnalytics(AnalyticsEvents.LOGIN_SUCCESS);
-        if (previewExpired) {
-          await handleCheckout();
-        } else {
-          await checkAccess(activeSession);
-        }
+        await checkAccess(activeSession);
       }
     } catch {
       setMessage('Could not sign in. Try again.');
@@ -532,6 +511,12 @@ export default function UFCAccess() {
 
   const handlePreviewExpired = useCallback(() => {
     setPreviewExpired(true);
+    if (!sessionRef.current) {
+      setAuthMode('signup');
+      setMessage('Preview ended — create your account, then pay to keep watching.');
+      document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     void handleCheckout();
   }, [handleCheckout]);
 
@@ -628,6 +613,8 @@ export default function UFCAccess() {
             password={password}
             message={message}
             busy={busy}
+            isLoggedIn={isLoggedIn}
+            userEmail={session?.user.email}
             previewExpired={previewExpired}
             previewLive={previewLive}
             onEmailChange={setEmail}
@@ -656,6 +643,9 @@ export default function UFCAccess() {
             />
             <PreviewConversion
               variant={previewExpired ? 'expired' : 'default'}
+              isLoggedIn={isLoggedIn}
+              userEmail={session?.user.email}
+              busy={busy}
               onUnlock={handleUnlock}
             />
             <PaywallCard
@@ -667,6 +657,7 @@ export default function UFCAccess() {
             <FAQ />
             <StickyUnlockCta
               visible={previewExpired || previewLive}
+              isLoggedIn={isLoggedIn}
               onUnlock={handleUnlock}
               busy={busy}
             />

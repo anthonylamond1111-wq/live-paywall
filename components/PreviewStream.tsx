@@ -241,7 +241,7 @@ export default function PreviewStream({
               <div>
                 <p className="text-xl font-bold text-white sm:text-2xl">Preview ended</p>
                 <p className="mt-2 max-w-sm text-sm leading-relaxed text-gray-400">
-                  Create an account to unlock the official stream and live chat.
+                  Create your account below, then pay to unlock the stream and live chat.
                 </p>
               </div>
               <button
@@ -249,7 +249,7 @@ export default function PreviewStream({
                 onClick={onUnlock}
                 className="mt-1 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-gray-100"
               >
-                Pay & watch live
+                Create account
               </button>
             </div>
           )}

@@ -9,9 +9,8 @@ import SocialProof from '@/components/SocialProof';
 type PreviewConversionProps = {
   onUnlock: () => void;
   variant?: 'default' | 'expired';
-  email?: string;
-  onEmailChange?: (value: string) => void;
-  message?: string;
+  isLoggedIn?: boolean;
+  userEmail?: string | null;
   busy?: boolean;
 };
 
@@ -25,30 +24,30 @@ const TRUST_POINTS = [
 export default function PreviewConversion({
   onUnlock,
   variant = 'default',
-  email = '',
-  onEmailChange,
-  message,
+  isLoggedIn = false,
+  userEmail,
   busy = false,
 }: PreviewConversionProps) {
-  const showEmailField = Boolean(onEmailChange);
-
   return (
-    <div className="rounded-2xl border border-red-600/40 bg-gradient-to-b from-zinc-900/95 to-black p-5 sm:rounded-3xl sm:p-6">
+    <div
+      id="pay"
+      className="scroll-mt-28 rounded-2xl border border-red-600/40 bg-gradient-to-b from-zinc-900/95 to-black p-5 sm:rounded-3xl sm:p-6"
+    >
       <div className="text-center">
         <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-red-400">
-          {EVENT.number}
+          Step 3 · Pay & watch
         </p>
         <h2 className="mt-2 text-xl font-bold text-white sm:text-2xl">
           {variant === 'expired'
-            ? 'Like what you saw? Unlock the full fight.'
-            : 'Watch free first — then unlock the full stream'}
+            ? 'Unlock the full live stream'
+            : 'Ready to watch the full event?'}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-gray-400">
-          {variant === 'expired'
-            ? 'Your 60-second preview ended. Pay once to keep watching live with chat.'
-            : 'Try 60 seconds of the live broadcast for free. Pay only when you\'re ready for the full event.'}
+          {isLoggedIn
+            ? 'One-time payment for full HD stream and live chat.'
+            : 'Create your account above first, then come back here to pay.'}
         </p>
-        <p className="mt-3 text-lg font-semibold text-white">{CHECKOUT_LABEL}</p>
+        <p className="mt-3 text-lg font-semibold text-white">{EVENT.priceLabel}</p>
       </div>
 
       <ul className="mt-5 grid gap-2 sm:grid-cols-2">
@@ -60,26 +59,8 @@ export default function PreviewConversion({
         ))}
       </ul>
 
-      {showEmailField && (
-        <div id="checkout-email" className="mt-5 scroll-mt-28">
-          <label htmlFor="checkout-email-input" className="mb-2 block text-center text-sm text-gray-400">
-            Your email for checkout — no account needed
-          </label>
-          <input
-            id="checkout-email-input"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@email.com"
-            value={email}
-            onChange={(e) => onEmailChange?.(e.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-base text-white outline-none transition focus:border-red-500"
-          />
-        </div>
-      )}
-
-      {message && (
-        <p className="mt-3 text-center text-sm text-red-400">{message}</p>
+      {isLoggedIn && userEmail && (
+        <p className="mt-5 text-center text-sm text-gray-500">Signed in as {userEmail}</p>
       )}
 
       <button
@@ -88,7 +69,11 @@ export default function PreviewConversion({
         disabled={busy}
         className="mt-5 w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
       >
-        {busy ? 'Redirecting to Stripe…' : CHECKOUT_LABEL}
+        {busy
+          ? 'Redirecting to Stripe…'
+          : isLoggedIn
+            ? CHECKOUT_LABEL
+            : 'Create account to pay'}
       </button>
 
       <div className="mt-4 space-y-3">

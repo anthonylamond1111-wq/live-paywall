@@ -23,6 +23,8 @@ type LandingFunnelProps = {
   password: string;
   message: string;
   busy: boolean;
+  isLoggedIn: boolean;
+  userEmail?: string | null;
   previewExpired: boolean;
   previewLive: boolean;
   onEmailChange: (value: string) => void;
@@ -41,6 +43,8 @@ export default function LandingFunnel({
   password,
   message,
   busy,
+  isLoggedIn,
+  userEmail,
   previewExpired,
   previewLive,
   onEmailChange,
@@ -64,6 +68,8 @@ export default function LandingFunnel({
     onSubmit(e);
   };
 
+  const journeyStep = isLoggedIn ? ('pay' as const) : ('account' as const);
+
   return (
     <>
       <div className={`${LANDING_FUNNEL_WIDTH} space-y-5 pb-20 sm:space-y-6`}>
@@ -82,7 +88,7 @@ export default function LandingFunnel({
         <EventCountdown />
 
         <p className="text-center text-sm text-gray-400">
-          Free 60-second preview — then pay once to keep watching
+          Free 60-second preview — create an account, then pay once to watch live
         </p>
         <div className="flex justify-center">
           <ShareButton
@@ -91,7 +97,7 @@ export default function LandingFunnel({
           />
         </div>
 
-        <JourneyProgress current="preview" onDark />
+        <JourneyProgress current={journeyStep} onDark />
 
         <LiveUpdateBanner />
 
@@ -101,80 +107,92 @@ export default function LandingFunnel({
           onUnlock={handleUnlock}
         />
 
-        <PreviewConversion
-          variant={previewExpired ? 'expired' : 'default'}
-          email={email}
-          onEmailChange={onEmailChange}
-          message={message}
-          busy={busy}
-          onUnlock={handleUnlock}
-        />
-
         <div
           id="signup"
           className="scroll-mt-28 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 sm:rounded-3xl sm:p-8"
         >
+          <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-[0.25em] text-red-400">
+            Step 2 · Account
+          </p>
           <h2 className="mb-2 text-center text-lg font-semibold text-gray-200">
-            {authMode === 'login' ? 'Log in' : 'Create password to watch'}
+            {authMode === 'login' ? 'Log in' : 'Create your account'}
           </h2>
           <p className="mb-5 text-center text-sm text-gray-500">
-            Already paid? Use the same email from checkout and choose a password below. Or pay with email only above — no password needed.
+            Email and password required before you can pay and watch.
           </p>
 
           {message && <p className="mb-4 text-center text-sm text-red-400">{message}</p>}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="email"
-              required
-              placeholder="Email"
-              value={email}
-              onChange={(e) => onEmailChange(e.target.value)}
-              className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-base text-white outline-none transition focus:border-red-500"
-            />
-            <input
-              type="password"
-              required
-              minLength={6}
-              placeholder="Password (min 6 characters)"
-              value={password}
-              onChange={(e) => onPasswordChange(e.target.value)}
-              className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-base text-white outline-none transition focus:border-red-500"
-            />
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full rounded-2xl border border-zinc-600 bg-transparent py-3.5 text-base font-medium text-white transition hover:border-zinc-400 disabled:opacity-60"
-            >
-              {busy
-                ? 'Please wait…'
-                : authMode === 'login'
-                  ? 'Log in'
-                  : 'Create password & watch'}
-            </button>
-          </form>
+          {isLoggedIn ? (
+            <div className="rounded-xl border border-green-500/30 bg-green-500/5 px-4 py-4 text-center">
+              <p className="text-sm font-medium text-green-400">Account ready</p>
+              <p className="mt-1 text-sm text-gray-400">Signed in as {userEmail}</p>
+              <p className="mt-3 text-xs text-gray-500">Scroll down to pay and start watching.</p>
+            </div>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <input
+                  type="email"
+                  required
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => onEmailChange(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-base text-white outline-none transition focus:border-red-500"
+                />
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Password (min 6 characters)"
+                  value={password}
+                  onChange={(e) => onPasswordChange(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-base text-white outline-none transition focus:border-red-500"
+                />
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="w-full rounded-2xl bg-white py-3.5 text-base font-semibold text-black transition hover:bg-gray-100 disabled:opacity-60"
+                >
+                  {busy
+                    ? 'Please wait…'
+                    : authMode === 'login'
+                      ? 'Log in'
+                      : 'Create account'}
+                </button>
+              </form>
 
-          <button
-            type="button"
-            onClick={onAuthModeToggle}
-            className="mt-4 w-full text-sm text-gray-500 underline transition hover:text-white"
-          >
-            {authMode === 'login'
-              ? 'Need an account? Sign up'
-              : 'Already have an account? Log in'}
-          </button>
+              <button
+                type="button"
+                onClick={onAuthModeToggle}
+                className="mt-4 w-full text-sm text-gray-500 underline transition hover:text-white"
+              >
+                {authMode === 'login'
+                  ? 'Need an account? Sign up'
+                  : 'Already have an account? Log in'}
+              </button>
 
-          {authMode === 'login' && (
-            <button
-              type="button"
-              onClick={onForgotPassword}
-              disabled={busy}
-              className="mt-2 w-full text-sm text-gray-600 underline transition hover:text-red-400"
-            >
-              Forgot password?
-            </button>
+              {authMode === 'login' && (
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  disabled={busy}
+                  className="mt-2 w-full text-sm text-gray-600 underline transition hover:text-red-400"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </>
           )}
         </div>
+
+        <PreviewConversion
+          variant={previewExpired ? 'expired' : 'default'}
+          isLoggedIn={isLoggedIn}
+          userEmail={userEmail}
+          busy={busy}
+          onUnlock={handleUnlock}
+        />
 
         <NotifyWhenLive />
         <FreeVsPaid />
@@ -183,6 +201,7 @@ export default function LandingFunnel({
 
       <StickyUnlockCta
         visible={previewExpired || previewLive}
+        isLoggedIn={isLoggedIn}
         onUnlock={handleUnlock}
         busy={busy}
       />

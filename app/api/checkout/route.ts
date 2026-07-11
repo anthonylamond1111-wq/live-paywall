@@ -7,7 +7,6 @@ import {
 } from '@/lib/stripe-checkout';
 import { getStripe } from '@/lib/stripe';
 import {
-  ensureUserForCheckout,
   getTokenFromRequest,
   getUserFromRequest,
   resolveUserAccess,
@@ -46,52 +45,30 @@ async function resolvePriceId(): Promise<string | null> {
   return fallbackPriceId ?? null;
 }
 
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
 function friendlyCheckoutError(error: string): string {
   if (/rate limit|rate exceeded|too many.*email/i.test(error)) {
-    return 'Too many attempts right now. Enter your email in the box below and tap Pay — no account needed.';
+    return 'Too many attempts right now. Wait a minute, then try again.';
   }
   return error;
 }
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json().catch(() => ({}))) as { email?: string };
     const user = await getUserFromRequest(request);
     const token = getTokenFromRequest(request);
 
-    let userId: string | null = null;
-    let customerEmail: string | null = null;
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Create an account and log in before paying.' },
+        { status: 401 }
+      );
+    }
 
-    if (user) {
-      if (await resolveUserAccess(user, token)) {
-        return NextResponse.json(
-          { error: 'You already have access for this event', alreadyPaid: true },
-          { status: 409 }
-        );
-      }
-      userId = user.id;
-      customerEmail = user.email ?? null;
-    } else {
-      const email = body.email?.trim();
-      if (!email || !isValidEmail(email)) {
-        return NextResponse.json(
-          { error: 'Enter your email to continue to checkout' },
-          { status: 400 }
-        );
-      }
-
-      userId = await ensureUserForCheckout(email);
-      if (!userId) {
-        return NextResponse.json(
-          { error: 'Could not prepare checkout. Try again in a minute.' },
-          { status: 500 }
-        );
-      }
-      customerEmail = email;
+    if (await resolveUserAccess(user, token)) {
+      return NextResponse.json(
+        { error: 'You already have access for this event', alreadyPaid: true },
+        { status: 409 }
+      );
     }
 
     const priceId = await resolvePriceId();
@@ -114,9 +91,9 @@ export async function POST(request: Request) {
       mode: 'payment',
       excluded_payment_method_types: [...STRIPE_EXCLUDED_PAYMENT_METHODS],
       wallet_options: STRIPE_WALLET_OPTIONS,
-      customer_email: customerEmail ?? undefined,
-      client_reference_id: userId,
-      metadata: { user_id: userId },
+      customer_email: user.email ?? undefined,
+      client_reference_id: user.id,
+      metadata: { user_id: user.id },
       line_items: [{ quantity: 1, price: priceId }],
       branding_settings: STRIPE_CHECKOUT_BRANDING,
       custom_text: STRIPE_CHECKOUT_CUSTOM_TEXT,

@@ -13,6 +13,7 @@ import CastToTvHelp from '@/components/CastToTvHelp';
 import StreamHealth, { type StreamHealthStatus } from '@/components/StreamHealth';
 import LiveUpdateBanner from '@/components/LiveUpdateBanner';
 import ShareButton from '@/components/ShareButton';
+import { LANDING_FUNNEL_WIDTH } from '@/components/LandingFunnel';
 
 type PlayerMode = 'normal' | 'theatre' | 'fullscreen';
 type MobileTab = 'watch' | 'chat';
@@ -175,7 +176,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
             ? 'relative min-h-0 flex-1'
             : isTheatre
               ? 'mx-auto w-full max-w-6xl space-y-4'
-              : 'flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_340px] lg:gap-6'
+              : `${LANDING_FUNNEL_WIDTH} flex flex-col gap-4`
         }
       >
         <div
@@ -206,11 +207,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
         </div>
 
         {!isFullscreen && (
-          <div
-            className={`min-h-0 ${
-              isTheatre ? 'mx-auto w-full max-w-3xl' : 'w-full'
-            }`}
-          >
+          <div className={isTheatre ? 'mx-auto w-full max-w-3xl' : 'w-full'}>
             <LiveChat
               session={session}
               viewerCount={viewerCount}
@@ -224,10 +221,12 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
 
       {!isFullscreen && (
         <>
-          <TaleOfTheTape />
+          <div className={LANDING_FUNNEL_WIDTH}>
+            <TaleOfTheTape />
+          </div>
 
-          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-800 bg-black/95 backdrop-blur-md lg:hidden">
-            <div className="flex">
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-800 bg-black/95 backdrop-blur-md">
+            <div className={`flex ${LANDING_FUNNEL_WIDTH}`}>
               <button
                 type="button"
                 onClick={() => setMobileTab('watch')}
@@ -256,9 +255,11 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
               </button>
             </div>
           </div>
-          <div className="h-14 lg:hidden" />
+          <div className="h-14" />
 
-          <FightInfo />
+          <div className={LANDING_FUNNEL_WIDTH}>
+            <FightInfo />
+          </div>
         </>
       )}
     </div>

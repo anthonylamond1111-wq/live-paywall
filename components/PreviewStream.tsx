@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import StreamPlayer from '@/components/StreamPlayer';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import { PREVIEW_SECONDS } from '@/lib/constants';
@@ -34,7 +34,18 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
   const [remaining, setRemaining] = useState(PREVIEW_SECONDS);
   const [expired, setExpired] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isLive, setIsLive] = useState(false);
   const { isBeforeStart } = useStreamSchedule();
+
+  const handleLiveChange = useCallback((live: boolean) => {
+    setIsLive(live);
+    if (!live || typeof window === 'undefined') return;
+    if (sessionStorage.getItem(PREVIEW_EXPIRED_KEY) === '1') return;
+    if (!sessionStorage.getItem(PREVIEW_START_KEY)) {
+      sessionStorage.setItem(PREVIEW_START_KEY, String(Date.now()));
+      setRemaining(PREVIEW_SECONDS);
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -57,10 +68,6 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
           return;
         }
 
-        if (!sessionStorage.getItem(PREVIEW_START_KEY)) {
-          sessionStorage.setItem(PREVIEW_START_KEY, String(Date.now()));
-        }
-
         setPreviewUrl(url);
         setRemaining(left);
       } finally {
@@ -72,10 +79,10 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
     return () => {
       active = false;
     };
-  }, [onPreviewExpired]);
+  }, []);
 
   useEffect(() => {
-    if (expired || !previewUrl) return;
+    if (expired || !previewUrl || !isLive) return;
 
     const timer = window.setInterval(() => {
       setRemaining((current) => {
@@ -91,9 +98,10 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [expired, previewUrl, onPreviewExpired]);
+  }, [expired, previewUrl, isLive, onPreviewExpired]);
 
-  const urgent = remaining <= 15 && !expired;
+  const urgent = remaining <= 15 && !expired && isLive;
+  const previewActive = isLive && !expired;
 
   return (
     <div className="preview-frame group relative overflow-hidden rounded-2xl sm:rounded-3xl">
@@ -107,12 +115,12 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
               </p>
             </div>
             <p className="mt-1 text-sm text-gray-400">
-              {isBeforeStart
-                ? 'Free preview starts when the broadcast goes live'
-                : '60 seconds free — see the live stream for yourself'}
+              {previewActive
+                ? '60 seconds free — see the live stream for yourself'
+                : 'Free preview starts when the broadcast goes live'}
             </p>
           </div>
-          {!expired && !loading && (
+          {previewActive && !loading && (
             <div
               className={`rounded-full px-3 py-1.5 text-xs font-mono font-semibold tabular-nums ${
                 urgent
@@ -136,14 +144,19 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
             </div>
           )}
 
-          {!loading && isBeforeStart && !expired && (
-            <StreamOffline
-              variant="scheduled"
-              subtitle="The free preview will be available here when the broadcast begins."
-            />
+          {!loading && previewUrl && !expired && (
+            <>
+              <StreamPlayer src={previewUrl} onLiveChange={handleLiveChange} />
+              {!isLive && (
+                <div className="absolute inset-0 z-10 overflow-hidden rounded-2xl sm:rounded-3xl">
+                  <StreamOffline
+                    variant={isBeforeStart ? 'scheduled' : 'waiting'}
+                    subtitle="The free preview will be available here when the broadcast begins."
+                  />
+                </div>
+              )}
+            </>
           )}
-
-          {!loading && previewUrl && !expired && !isBeforeStart && <StreamPlayer src={previewUrl} />}
 
           {!loading && expired && (
             <div className="preview-ended flex aspect-video flex-col items-center justify-center gap-4 bg-gradient-to-b from-zinc-950 via-black to-black px-6 text-center">
@@ -172,13 +185,13 @@ export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) 
             </div>
           )}
 
-          {!loading && !expired && previewUrl && !isBeforeStart && (
+          {previewActive && (
             <>
-              <div className="pointer-events-none absolute left-3 top-3 rounded-md bg-black/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-200 ring-1 ring-white/10 backdrop-blur-sm">
+              <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-200 ring-1 ring-white/10 backdrop-blur-sm">
                 Preview only
               </div>
               {urgent && (
-                <div className="pointer-events-none absolute inset-x-0 top-12 flex justify-center px-4">
+                <div className="pointer-events-none absolute inset-x-0 top-12 z-20 flex justify-center px-4">
                   <div className="rounded-full bg-red-600/95 px-4 py-2 text-xs font-semibold text-white shadow-[0_0_24px_rgba(220,38,38,0.5)]">
                     Preview ends in {formatCountdown(remaining)} — sign up to keep watching
                   </div>

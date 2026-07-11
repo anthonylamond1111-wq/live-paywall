@@ -13,7 +13,7 @@ type PaywallCardProps = {
 
 export default function PaywallCard({ email, message, busy, onCheckout }: PaywallCardProps) {
   return (
-    <div className="mx-auto max-w-md space-y-6">
+    <div className="space-y-6">
       <SocialProof />
 
       <div className="rounded-2xl border border-red-600/50 bg-zinc-900/90 p-6 text-center shadow-[0_0_60px_rgba(220,38,38,0.08)] sm:rounded-3xl sm:p-10">

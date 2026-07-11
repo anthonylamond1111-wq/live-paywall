@@ -236,8 +236,8 @@ export default function LiveChat({
       id="live-chat-panel"
       className={`flex flex-col overflow-hidden rounded-2xl border border-red-600/50 bg-zinc-900/90 shadow-lg shadow-red-900/5 sm:rounded-3xl ${
         mobileExpanded
-          ? 'h-[min(55dvh,420px)] min-h-[280px] lg:h-[min(70vh,520px)] lg:min-h-[400px]'
-          : 'h-72 min-h-[240px] sm:h-80 lg:h-[min(70vh,520px)] lg:min-h-[400px]'
+          ? 'h-[min(55dvh,420px)] min-h-[280px]'
+          : 'h-72 min-h-[240px] sm:h-80'
       }`}
     >
       <div className="border-b border-zinc-800 bg-zinc-900/80 px-4 py-3">

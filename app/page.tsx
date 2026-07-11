@@ -5,15 +5,13 @@ import type { Session } from '@supabase/supabase-js';
 import AddToHomeScreen from '@/components/AddToHomeScreen';
 import BrandIntro from '@/components/BrandIntro';
 import BrandLogo from '@/components/BrandLogo';
-import EventCountdown from '@/components/EventCountdown';
 import FAQ from '@/components/FAQ';
 import FightNightLanding from '@/components/FightNightLanding';
-import FreeVsPaid from '@/components/FreeVsPaid';
+import { LANDING_FUNNEL_WIDTH } from '@/components/LandingFunnel';
+import LandingFunnel from '@/components/LandingFunnel';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import PageBackground from '@/components/PageBackground';
 import PaywallCard from '@/components/PaywallCard';
-import PreviewConversion from '@/components/PreviewConversion';
-import PreviewStream from '@/components/PreviewStream';
 import SiteFooter from '@/components/SiteFooter';
 import StreamView from '@/components/StreamView';
 import SuccessScreen from '@/components/SuccessScreen';
@@ -275,11 +273,16 @@ export default function UFCAccess() {
     setView('success');
   };
 
-  const scrollToSignup = (mode: 'login' | 'signup') => {
+  const scrollToSignup = useCallback((mode: 'login' | 'signup') => {
     setAuthMode(mode);
     setMessage('');
     document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  }, []);
+
+  const handlePreviewExpired = useCallback(() => {
+    setPreviewExpired(true);
+    scrollToSignup('signup');
+  }, [scrollToSignup]);
 
   const isLoggedIn = !!session;
   const showAuthGate = !isLoggedIn || view === 'auth';
@@ -333,11 +336,10 @@ export default function UFCAccess() {
         </div>
       </nav>
 
-      {showHero && (
+      {showHero && !showAuthGate && (
         <FightNightLanding
           journeyStep={journeyStep}
-          hideSignupCta={!showAuthGate}
-          compact={showAuthGate}
+          hideSignupCta
           onCreateAccount={() => scrollToSignup('signup')}
           onSignIn={() => scrollToSignup('login')}
         />
@@ -345,127 +347,53 @@ export default function UFCAccess() {
 
       <main
         className={`relative mx-auto px-4 sm:px-6 ${
-          showHero
-            ? 'max-w-6xl pb-10'
-            : showAuthGate
-              ? 'max-w-6xl pb-10 pt-24 sm:pb-20 sm:pt-28'
+          showAuthGate
+            ? 'max-w-6xl pb-10 pt-[5.25rem] sm:pt-28'
+            : showHero
+              ? 'max-w-6xl pb-10'
               : view === 'stream'
                 ? 'max-w-6xl pb-6 pt-24 sm:pt-28'
-                : 'max-w-5xl pb-10 pt-24 sm:pb-20 sm:pt-28'
+                : 'max-w-6xl pb-10 pt-24 sm:pb-20 sm:pt-28'
         }`}
       >
         {showAuthGate && (
-          <div className="mx-auto w-full max-w-2xl space-y-5 sm:space-y-6">
-            <PreviewStream
-              onPreviewExpired={() => {
-                setPreviewExpired(true);
-                scrollToSignup('signup');
-              }}
-            />
-            <PreviewConversion
-              variant={previewExpired ? 'expired' : 'default'}
-              onUnlock={() => scrollToSignup('signup')}
-            />
-            <EventCountdown />
-            <FreeVsPaid />
-
-            <div
-              id="signup"
-              className="scroll-mt-28 rounded-2xl border border-red-600/50 bg-zinc-900/90 p-6 shadow-lg shadow-red-900/5 sm:rounded-3xl sm:p-10"
-            >
-              <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
-                {authMode === 'login' ? 'Log in' : 'Create your account'}
-              </h2>
-              <p className="mb-6 text-center text-sm text-gray-400">
-                {previewExpired
-                  ? 'Your preview ended — sign up and pay once to unlock the full live stream and chat.'
-                  : 'Create a free account to continue after your preview. Pay once for full access tonight.'}
-              </p>
-
-              {message && <p className="mb-4 text-center text-sm text-red-400">{message}</p>}
-
-              {view === 'loading' && !isLoggedIn && (
-                <p className="mb-4 text-center text-sm text-gray-400">Loading…</p>
-              )}
-
-              <form onSubmit={handleAuth} className="space-y-4">
-                <input
-                  type="email"
-                  required
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition focus:border-red-500"
-                />
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  placeholder="Password (min 6 characters)"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition focus:border-red-500"
-                />
-                <button
-                  type="submit"
-                  disabled={busy || (view === 'loading' && !isLoggedIn)}
-                  className="w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
-                >
-                  {busy
-                    ? 'Please wait…'
-                    : authMode === 'login'
-                      ? 'Log in'
-                      : 'Create account & continue'}
-                </button>
-              </form>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode(authMode === 'login' ? 'signup' : 'login');
-                  setMessage('');
-                }}
-                className="mt-4 w-full text-sm text-gray-400 underline transition hover:text-white"
-              >
-                {authMode === 'login'
-                  ? 'Need an account? Sign up'
-                  : 'Already have an account? Log in'}
-              </button>
-
-              {authMode === 'login' && (
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  disabled={busy}
-                  className="mt-2 w-full text-sm text-gray-500 underline transition hover:text-red-400"
-                >
-                  Forgot password?
-                </button>
-              )}
-            </div>
-
-            <FAQ />
-          </div>
+          <LandingFunnel
+            authMode={authMode}
+            email={email}
+            password={password}
+            message={message}
+            busy={busy}
+            loading={view === 'loading' && !isLoggedIn}
+            previewExpired={previewExpired}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+            onAuthModeToggle={() => {
+              setAuthMode(authMode === 'login' ? 'signup' : 'login');
+              setMessage('');
+            }}
+            onForgotPassword={handleForgotPassword}
+            onSubmit={handleAuth}
+            onUnlock={() => scrollToSignup('signup')}
+            onPreviewExpired={handlePreviewExpired}
+          />
         )}
 
         {view === 'loading' && isLoggedIn && <LoadingSkeleton />}
 
         {view === 'pay' && isLoggedIn && (
-          <>
+          <div className={`${LANDING_FUNNEL_WIDTH} space-y-6`}>
             <PaywallCard
               email={session?.user.email}
               message={message}
               busy={busy}
               onCheckout={handleCheckout}
             />
-            <div className="mx-auto mt-8 max-w-md">
-              <FAQ />
-            </div>
-          </>
+            <FAQ />
+          </div>
         )}
 
         {view === 'success' && isLoggedIn && (
-          <div className="relative z-20">
+          <div className={`${LANDING_FUNNEL_WIDTH} relative z-20`}>
             <SuccessScreen
               email={session?.user.email}
               purchaseJustCompleted={purchaseJustCompleted}

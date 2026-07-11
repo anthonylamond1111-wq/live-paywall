@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { hasStreamStarted } from '@/lib/event';
+import { MAX_STREAM_HEIGHT } from '@/lib/constants';
 import {
   createStreamHlsConfig,
-  getBufferedAheadSeconds,
+  getMaxAutoLevelIndex,
   getSafeStartLevel,
-  QUALITY_RAMP_BUFFER_SECONDS,
 } from '@/lib/hls-config';
 import type { StreamHealthStatus } from '@/components/StreamHealth';
 import CastToTvButton from '@/components/CastToTvButton';
@@ -54,7 +54,6 @@ export default function StreamPlayer({
   const hlsRef = useRef<Hls | null>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasLiveRef = useRef(false);
-  const qualityRampedRef = useRef(false);
 
   const [error, setError] = useState('');
   const [errorTitle, setErrorTitle] = useState('Stream unavailable');
@@ -133,7 +132,6 @@ export default function StreamPlayer({
 
   useEffect(() => {
     wasLiveRef.current = false;
-    qualityRampedRef.current = false;
   }, [src]);
 
   useEffect(() => {
@@ -150,6 +148,15 @@ export default function StreamPlayer({
 
     let hls: Hls | null = null;
 
+    const dropQualityOnBuffer = () => {
+      onHealthChange?.('buffering');
+      if (!hls) return;
+      const level = hls.currentLevel === -1 ? hls.loadLevel : hls.currentLevel;
+      if (level > 0) {
+        hls.nextLevel = level - 1;
+      }
+    };
+
     const signalLiveIfPicture = () => {
       if (video.videoWidth > 0 && video.videoHeight > 0) {
         markLive();
@@ -162,12 +169,13 @@ export default function StreamPlayer({
 
     video.addEventListener('loadeddata', signalLiveIfPicture);
     video.addEventListener('playing', signalLiveIfPicture);
+    video.addEventListener('waiting', dropQualityOnBuffer);
 
     const syncToLiveEdge = () => {
       if (!video || !Number.isFinite(video.duration)) return;
       const behindLive = video.duration - video.currentTime;
-      if (behindLive > 20) {
-        video.currentTime = Math.max(0, video.duration - 6);
+      if (behindLive > 45) {
+        video.currentTime = Math.max(0, video.duration - 8);
       }
     };
 
@@ -186,35 +194,30 @@ export default function StreamPlayer({
       });
       hlsRef.current = hls;
 
-      const tryRampToMaxQuality = () => {
-        if (!hls || qualityRampedRef.current) return;
-        if (getBufferedAheadSeconds(video) < QUALITY_RAMP_BUFFER_SECONDS) return;
-
-        hls.currentLevel = -1;
-        qualityRampedRef.current = true;
-      };
-
       hls.loadSource(src);
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
-        const qualityLevels: QualityLevel[] = data.levels.map((level, index) => ({
-          index,
-          label: level.height ? `${level.height}p` : `Level ${index + 1}`,
-        }));
+        const maxLevel = getMaxAutoLevelIndex(data.levels);
+        const qualityLevels: QualityLevel[] = data.levels
+          .map((level, index) => ({
+            index,
+            label: level.height ? `${level.height}p` : `Level ${index + 1}`,
+            height: level.height ?? 0,
+          }))
+          .filter((level) => level.height <= MAX_STREAM_HEIGHT || level.height === 0)
+          .map(({ index, label }) => ({ index, label }));
+
         setLevels(qualityLevels);
+        hls!.autoLevelCapping = maxLevel;
         hls!.startLevel = getSafeStartLevel(data.levels);
-        hls!.autoLevelCapping = data.levels.length - 1;
         setCurrentLevel(hls?.currentLevel ?? -1);
         hls?.startLoad(-1);
         startPlayback();
         setReconnecting(false);
       });
 
-      hls.on(Hls.Events.FRAG_BUFFERED, () => {
-        syncToLiveEdge();
-        tryRampToMaxQuality();
-      });
+      hls.on(Hls.Events.FRAG_BUFFERED, syncToLiveEdge);
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
         setCurrentLevel(data.level);
@@ -222,7 +225,7 @@ export default function StreamPlayer({
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
-          onHealthChange?.('buffering');
+          dropQualityOnBuffer();
           return;
         }
 
@@ -263,6 +266,7 @@ export default function StreamPlayer({
         window.clearInterval(liveSyncTimer);
         video.removeEventListener('loadeddata', signalLiveIfPicture);
         video.removeEventListener('playing', signalLiveIfPicture);
+        video.removeEventListener('waiting', dropQualityOnBuffer);
         hls?.destroy();
         hlsRef.current = null;
       };
@@ -284,8 +288,10 @@ export default function StreamPlayer({
             : 'Waiting for the broadcast. Tap reconnect when it goes live.'
         );
       };
+      const onNativeWaiting = () => onHealthChange?.('buffering');
       video.addEventListener('loadedmetadata', onNativeMetadata);
       video.addEventListener('error', onNativeError);
+      video.addEventListener('waiting', onNativeWaiting);
       const liveSyncTimer = window.setInterval(syncToLiveEdge, 10000);
       return () => {
         window.clearInterval(liveSyncTimer);
@@ -293,6 +299,7 @@ export default function StreamPlayer({
         video.removeEventListener('playing', signalLiveIfPicture);
         video.removeEventListener('loadedmetadata', onNativeMetadata);
         video.removeEventListener('error', onNativeError);
+        video.removeEventListener('waiting', onNativeWaiting);
         video.removeAttribute('src');
         video.load();
       };
@@ -334,7 +341,6 @@ export default function StreamPlayer({
     const hls = hlsRef.current;
     if (!hls) return;
     hls.currentLevel = levelIndex;
-    qualityRampedRef.current = true;
     setCurrentLevel(levelIndex);
   };
 

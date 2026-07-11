@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getStreamUrl } from '@/lib/constants';
+import { getStreamUrl, MAX_STREAM_HEIGHT } from '@/lib/constants';
+import { capPlaylistResolutions } from '@/lib/hls-config';
 import { canProxyStream } from '@/lib/hls-access';
 
 export const dynamic = 'force-dynamic';
@@ -88,7 +89,7 @@ export async function GET(request: Request) {
         });
       }
 
-      return new Response(rewritePlaylist(text, target), {
+      return new Response(capPlaylistResolutions(rewritePlaylist(text, target), MAX_STREAM_HEIGHT), {
         headers: {
           'Content-Type': 'application/vnd.apple.mpegurl',
           'Cache-Control': 'no-store',

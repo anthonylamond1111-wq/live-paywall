@@ -1,4 +1,5 @@
 import type { Level } from 'hls.js';
+import { MAX_STREAM_HEIGHT } from '@/lib/constants';
 import { isMobileDevice } from '@/lib/cast-to-tv';
 
 /** Pick the level whose height is closest to target (prefer at-or-below when pickLower). */
@@ -32,6 +33,10 @@ export function pickLevelByHeight(
   return bestIndex;
 }
 
+export function getMaxAutoLevelIndex(levels: Level[]): number {
+  return pickLevelByHeight(levels, MAX_STREAM_HEIGHT, true);
+}
+
 export function getBufferedAheadSeconds(video: HTMLVideoElement): number {
   const { buffered, currentTime } = video;
   if (!buffered.length) return 0;
@@ -49,29 +54,50 @@ export function createStreamHlsConfig() {
   return {
     enableWorker: true,
     lowLatencyMode: false,
-    backBufferLength: 30,
-    liveSyncDurationCount: 4,
-    liveMaxLatencyDurationCount: 10,
-    maxLiveSyncPlaybackRate: 1.05,
-    maxBufferLength: 40,
-    maxMaxBufferLength: 80,
-    maxBufferSize: 70 * 1000 * 1000,
+    backBufferLength: 20,
+    liveSyncDurationCount: 3,
+    liveMaxLatencyDurationCount: 8,
+    maxLiveSyncPlaybackRate: 1,
+    maxBufferLength: 30,
+    maxMaxBufferLength: 60,
+    maxBufferSize: 50 * 1000 * 1000,
     maxBufferHole: 0.5,
-    capLevelToPlayerSize: false,
+    capLevelToPlayerSize: true,
     capLevelOnFPSDrop: true,
     testBandwidth: true,
-    abrEwmaDefaultEstimate: isMobileDevice() ? 2_500_000 : 5_000_000,
-    abrBandWidthFactor: 0.92,
-    abrBandWidthUpFactor: 0.72,
+    abrEwmaDefaultEstimate: isMobileDevice() ? 1_800_000 : 2_500_000,
+    abrBandWidthFactor: 0.85,
+    abrBandWidthUpFactor: 0.6,
     abrMaxWithRealBitrate: true,
-    fragLoadingMaxRetry: 6,
+    fragLoadingMaxRetry: 8,
     manifestLoadingMaxRetry: 4,
+    startFragPrefetch: true,
   };
 }
 
 export function getSafeStartLevel(levels: Level[]): number {
   const target = isMobileDevice() ? 480 : 720;
-  return pickLevelByHeight(levels, target, true);
+  return pickLevelByHeight(levels, Math.min(target, MAX_STREAM_HEIGHT), true);
 }
 
-export const QUALITY_RAMP_BUFFER_SECONDS = 10;
+/** Drop renditions above MAX_STREAM_HEIGHT from a multivariant master playlist. */
+export function capPlaylistResolutions(body: string, maxHeight: number): string {
+  const lines = body.split('\n');
+  const result: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.includes('#EXT-X-STREAM-INF') && line.includes('RESOLUTION=')) {
+      const heightMatch = line.match(/RESOLUTION=\d+x(\d+)/);
+      const height = heightMatch ? Number(heightMatch[1]) : 0;
+      if (height > maxHeight) {
+        const next = lines[i + 1]?.trim();
+        if (next && !next.startsWith('#')) i += 1;
+        continue;
+      }
+    }
+    result.push(line);
+  }
+
+  return result.join('\n');
+}

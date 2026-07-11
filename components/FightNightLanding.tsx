@@ -6,6 +6,7 @@ import JourneyProgress from '@/components/JourneyProgress';
 type FightNightLandingProps = {
   journeyStep: 'preview' | 'account' | 'pay' | 'watch';
   hideSignupCta?: boolean;
+  compact?: boolean;
   extendForSuccess?: boolean;
   onCreateAccount?: () => void;
   onSignIn?: () => void;
@@ -14,9 +15,27 @@ type FightNightLandingProps = {
 export default function FightNightLanding({
   journeyStep,
   hideSignupCta = false,
+  compact = false,
   onCreateAccount,
   onSignIn,
 }: FightNightLandingProps) {
+  if (compact) {
+    return (
+      <section className="relative w-full border-b border-red-600/20 bg-black">
+        <div className="relative z-10 px-4 pb-3 pt-[4.25rem] sm:px-8 sm:pt-[5.25rem]">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-500 sm:text-xs">
+              {EVENT.number} • {EVENT.tagline}
+            </p>
+            <p className="mt-2 text-sm text-gray-400">
+              Free 60-second preview below — then unlock the full live stream
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="relative w-full overflow-hidden border-b border-red-600/30 bg-gradient-to-b from-zinc-950 via-black to-black">
       <div className="relative z-10 flex flex-col pt-[4.25rem] sm:pt-[5.25rem]">

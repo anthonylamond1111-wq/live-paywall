@@ -10,9 +10,9 @@ import FAQ from '@/components/FAQ';
 import FightNightLanding from '@/components/FightNightLanding';
 import FreeVsPaid from '@/components/FreeVsPaid';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
-import NotifyWhenLive from '@/components/NotifyWhenLive';
 import PageBackground from '@/components/PageBackground';
 import PaywallCard from '@/components/PaywallCard';
+import PreviewConversion from '@/components/PreviewConversion';
 import PreviewStream from '@/components/PreviewStream';
 import SiteFooter from '@/components/SiteFooter';
 import StreamView from '@/components/StreamView';
@@ -46,6 +46,7 @@ export default function UFCAccess() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [purchaseJustCompleted, setPurchaseJustCompleted] = useState(false);
+  const [previewExpired, setPreviewExpired] = useState(false);
 
   const unlockStream = useCallback(async (activeSession: Session) => {
     const streamRes = await authFetch(activeSession, '/api/stream');
@@ -117,6 +118,13 @@ export default function UFCAccess() {
     },
     []
   );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem('ufc_preview_expired') === '1') {
+      setPreviewExpired(true);
+    }
+  }, []);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -329,6 +337,7 @@ export default function UFCAccess() {
         <FightNightLanding
           journeyStep={journeyStep}
           hideSignupCta={!showAuthGate}
+          compact={showAuthGate}
           onCreateAccount={() => scrollToSignup('signup')}
           onSignIn={() => scrollToSignup('login')}
         />
@@ -345,13 +354,18 @@ export default function UFCAccess() {
                 : 'max-w-5xl pb-10 pt-24 sm:pb-20 sm:pt-28'
         }`}
       >
-        {showAuthGate && <NotifyWhenLive />}
-
-        {view === 'loading' && isLoggedIn && <LoadingSkeleton />}
-
         {showAuthGate && (
-          <div className="mx-auto w-full max-w-2xl space-y-6">
-            <PreviewStream />
+          <div className="mx-auto w-full max-w-2xl space-y-5 sm:space-y-6">
+            <PreviewStream
+              onPreviewExpired={() => {
+                setPreviewExpired(true);
+                scrollToSignup('signup');
+              }}
+            />
+            <PreviewConversion
+              variant={previewExpired ? 'expired' : 'default'}
+              onUnlock={() => scrollToSignup('signup')}
+            />
             <EventCountdown />
             <FreeVsPaid />
 
@@ -363,8 +377,9 @@ export default function UFCAccess() {
                 {authMode === 'login' ? 'Log in' : 'Create your account'}
               </h2>
               <p className="mb-6 text-center text-sm text-gray-400">
-                Create an account to watch the official stream after your free preview. Your
-                purchase is saved to your account so you can come back anytime.
+                {previewExpired
+                  ? 'Your preview ended — sign up and pay once to unlock the full live stream and chat.'
+                  : 'Create a free account to continue after your preview. Pay once for full access tonight.'}
               </p>
 
               {message && <p className="mb-4 text-center text-sm text-red-400">{message}</p>}
@@ -432,6 +447,8 @@ export default function UFCAccess() {
             <FAQ />
           </div>
         )}
+
+        {view === 'loading' && isLoggedIn && <LoadingSkeleton />}
 
         {view === 'pay' && isLoggedIn && (
           <>

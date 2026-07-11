@@ -25,7 +25,11 @@ function getRemainingSeconds(duration: number) {
   return Math.max(0, duration - elapsed);
 }
 
-export default function PreviewStream() {
+type PreviewStreamProps = {
+  onPreviewExpired?: () => void;
+};
+
+export default function PreviewStream({ onPreviewExpired }: PreviewStreamProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(PREVIEW_SECONDS);
   const [expired, setExpired] = useState(false);
@@ -68,7 +72,7 @@ export default function PreviewStream() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [onPreviewExpired]);
 
   useEffect(() => {
     if (expired || !previewUrl) return;
@@ -79,6 +83,7 @@ export default function PreviewStream() {
           sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
           setExpired(true);
           setPreviewUrl(null);
+          onPreviewExpired?.();
           return 0;
         }
         return current - 1;
@@ -86,7 +91,7 @@ export default function PreviewStream() {
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [expired, previewUrl]);
+  }, [expired, previewUrl, onPreviewExpired]);
 
   const urgent = remaining <= 15 && !expired;
 
@@ -103,8 +108,8 @@ export default function PreviewStream() {
             </div>
             <p className="mt-1 text-sm text-gray-400">
               {isBeforeStart
-                ? 'Preview available when the stream goes live'
-                : "Sample of tonight's live broadcast"}
+                ? 'Free preview starts when the broadcast goes live'
+                : '60 seconds free — see the live stream for yourself'}
             </p>
           </div>
           {!expired && !loading && (

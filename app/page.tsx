@@ -29,6 +29,13 @@ import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
 type View = 'loading' | 'auth' | 'pay' | 'success' | 'stream';
 
+function friendlyAuthError(message: string): string {
+  if (/rate limit|rate exceeded|too many.*email/i.test(message)) {
+    return 'Email limit reached — you do not need an account to pay. Enter your email above the Pay button instead.';
+  }
+  return message;
+}
+
 async function authFetch(
   session: Session,
   input: string,
@@ -319,8 +326,8 @@ export default function UFCAccess() {
     const checkoutEmail = session?.user.email ?? email.trim();
 
     if (!session && !checkoutEmail) {
-      document.getElementById('signup')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setMessage('Enter your email to continue to checkout.');
+      document.getElementById('checkout-email')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setMessage('Enter your email above the Pay button — no account needed.');
       return;
     }
 
@@ -350,7 +357,7 @@ export default function UFCAccess() {
       }
 
       if (!res.ok || !data.url) {
-        setMessage(data.error ?? 'Could not start payment.');
+        setMessage(friendlyAuthError(data.error ?? 'Could not start payment.'));
         return;
       }
 
@@ -376,22 +383,22 @@ export default function UFCAccess() {
     setMessage('');
 
     try {
-      const result =
-        authMode === 'signup'
-          ? await supabase.auth.signUp({ email, password })
-          : await supabase.auth.signInWithPassword({ email, password });
-
-      if (result.error) {
-        setMessage(result.error.message);
-        return;
-      }
-
-      if (authMode === 'signup' && !result.data.session) {
-        await fetch('/api/auth/confirm-signup', {
+      if (authMode === 'signup') {
+        const confirmRes = await fetch('/api/auth/confirm-signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email.trim(), password }),
         });
+
+        if (!confirmRes.ok) {
+          const data = await confirmRes.json().catch(() => ({}));
+          setMessage(
+            friendlyAuthError(
+              (data as { error?: string }).error ?? 'Could not create account.'
+            )
+          );
+          return;
+        }
 
         const signIn = await supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -414,14 +421,17 @@ export default function UFCAccess() {
         return;
       }
 
+      const result = await supabase.auth.signInWithPassword({ email, password });
+
+      if (result.error) {
+        setMessage(friendlyAuthError(result.error.message));
+        return;
+      }
+
       const activeSession = result.data.session;
       if (activeSession) {
         setSession(activeSession);
-        trackAnalytics(
-          authMode === 'signup'
-            ? AnalyticsEvents.SIGNUP_SUCCESS
-            : AnalyticsEvents.LOGIN_SUCCESS
-        );
+        trackAnalytics(AnalyticsEvents.LOGIN_SUCCESS);
         if (previewExpired) {
           await handleCheckout();
         } else {
@@ -470,7 +480,7 @@ export default function UFCAccess() {
     setBusy(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(friendlyAuthError(error.message));
     } else {
       setMessage('Password reset email sent — check your inbox.');
     }

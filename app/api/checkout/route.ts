@@ -50,6 +50,13 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function friendlyCheckoutError(error: string): string {
+  if (/rate limit|rate exceeded|too many.*email/i.test(error)) {
+    return 'Too many attempts right now. Enter your email in the box below and tap Pay — no account needed.';
+  }
+  return error;
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as { email?: string };
@@ -79,7 +86,10 @@ export async function POST(request: Request) {
 
       userId = await ensureUserForCheckout(email);
       if (!userId) {
-        return NextResponse.json({ error: 'Could not prepare checkout' }, { status: 500 });
+        return NextResponse.json(
+          { error: 'Could not prepare checkout. Try again in a minute.' },
+          { status: 500 }
+        );
       }
       customerEmail = email;
     }
@@ -123,6 +133,6 @@ export async function POST(request: Request) {
     console.error('Checkout error:', error);
     const message =
       error instanceof Error ? error.message : 'Checkout failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: friendlyCheckoutError(message) }, { status: 500 });
   }
 }

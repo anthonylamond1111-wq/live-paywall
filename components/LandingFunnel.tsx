@@ -103,6 +103,10 @@ export default function LandingFunnel({
 
         <PreviewConversion
           variant={previewExpired ? 'expired' : 'default'}
+          email={email}
+          onEmailChange={onEmailChange}
+          message={message}
+          busy={busy}
           onUnlock={handleUnlock}
         />
 
@@ -111,10 +115,10 @@ export default function LandingFunnel({
           className="scroll-mt-28 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 sm:rounded-3xl sm:p-8"
         >
           <h2 className="mb-2 text-center text-lg font-semibold text-gray-200">
-            {authMode === 'login' ? 'Log in' : 'Or create a password for chat'}
+            {authMode === 'login' ? 'Log in' : 'Optional: chat account'}
           </h2>
           <p className="mb-5 text-center text-sm text-gray-500">
-            Optional — only needed if you want live chat on multiple devices.
+            Only needed for live chat on multiple devices. Pay with email above — no password required.
           </p>
 
           {message && <p className="mb-4 text-center text-sm text-red-400">{message}</p>}

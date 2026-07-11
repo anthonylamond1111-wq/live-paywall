@@ -1,3 +1,5 @@
+'use client';
+
 import { CHECKOUT_LABEL } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
 import PaymentBadges from '@/components/PaymentBadges';
@@ -7,6 +9,10 @@ import SocialProof from '@/components/SocialProof';
 type PreviewConversionProps = {
   onUnlock: () => void;
   variant?: 'default' | 'expired';
+  email?: string;
+  onEmailChange?: (value: string) => void;
+  message?: string;
+  busy?: boolean;
 };
 
 const TRUST_POINTS = [
@@ -19,7 +25,13 @@ const TRUST_POINTS = [
 export default function PreviewConversion({
   onUnlock,
   variant = 'default',
+  email = '',
+  onEmailChange,
+  message,
+  busy = false,
 }: PreviewConversionProps) {
+  const showEmailField = Boolean(onEmailChange);
+
   return (
     <div className="rounded-2xl border border-red-600/40 bg-gradient-to-b from-zinc-900/95 to-black p-5 sm:rounded-3xl sm:p-6">
       <div className="text-center">
@@ -48,12 +60,35 @@ export default function PreviewConversion({
         ))}
       </ul>
 
+      {showEmailField && (
+        <div id="checkout-email" className="mt-5 scroll-mt-28">
+          <label htmlFor="checkout-email-input" className="mb-2 block text-center text-sm text-gray-400">
+            Your email for checkout — no account needed
+          </label>
+          <input
+            id="checkout-email-input"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@email.com"
+            value={email}
+            onChange={(e) => onEmailChange?.(e.target.value)}
+            className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3 text-base text-white outline-none transition focus:border-red-500"
+          />
+        </div>
+      )}
+
+      {message && (
+        <p className="mt-3 text-center text-sm text-red-400">{message}</p>
+      )}
+
       <button
         type="button"
         onClick={onUnlock}
-        className="mt-5 w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985]"
+        disabled={busy}
+        className="mt-5 w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
       >
-        {CHECKOUT_LABEL}
+        {busy ? 'Redirecting to Stripe…' : CHECKOUT_LABEL}
       </button>
 
       <div className="mt-4 space-y-3">

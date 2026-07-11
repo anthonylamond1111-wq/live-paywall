@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { hasStreamStarted } from '@/lib/event';
 import type { StreamHealthStatus } from '@/components/StreamHealth';
+import CastToTvButton from '@/components/CastToTvButton';
+import { detectCastMethod, isMobileDevice } from '@/lib/cast-to-tv';
 
 type QualityLevel = {
   index: number;
@@ -17,6 +19,7 @@ type StreamPlayerProps = {
   onRequestFullscreen?: () => void;
   onLiveChange?: (live: boolean) => void;
   onHealthChange?: (status: StreamHealthStatus) => void;
+  showCastButton?: boolean;
 };
 
 function assignVideoRef(
@@ -37,6 +40,7 @@ export default function StreamPlayer({
   onRequestFullscreen,
   onLiveChange,
   onHealthChange,
+  showCastButton = false,
 }: StreamPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -51,6 +55,7 @@ export default function StreamPlayer({
   const [currentLevel, setCurrentLevel] = useState(-1);
   const [showControls, setShowControls] = useState(true);
   const [pipSupported, setPipSupported] = useState(false);
+  const [castVisible, setCastVisible] = useState(false);
 
   const resetHideTimer = useCallback(() => {
     setShowControls(true);
@@ -67,6 +72,28 @@ export default function StreamPlayer({
         document.pictureInPictureEnabled
     );
   }, []);
+
+  useEffect(() => {
+    if (!showCastButton) {
+      setCastVisible(false);
+      return;
+    }
+
+    const update = () => {
+      const method = detectCastMethod(videoRef.current);
+      setCastVisible(isMobileDevice() || method !== 'none');
+    };
+
+    update();
+    const video = videoRef.current;
+    video?.addEventListener('loadedmetadata', update);
+    video?.addEventListener('canplay', update);
+
+    return () => {
+      video?.removeEventListener('loadedmetadata', update);
+      video?.removeEventListener('canplay', update);
+    };
+  }, [showCastButton, src]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -263,6 +290,8 @@ export default function StreamPlayer({
         autoPlay
         muted
         playsInline
+        disableRemotePlayback={false}
+        {...({ 'x-webkit-airplay': 'allow' } as React.VideoHTMLAttributes<HTMLVideoElement>)}
         className={`h-full w-full bg-black ${
           fill ? 'min-h-0 object-cover' : 'aspect-video object-contain'
         }`}
@@ -377,6 +406,10 @@ export default function StreamPlayer({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10" />
               </svg>
             </button>
+          )}
+
+          {castVisible && (
+            <CastToTvButton videoRef={videoRef} variant="player" />
           )}
 
           {onRequestFullscreen && (

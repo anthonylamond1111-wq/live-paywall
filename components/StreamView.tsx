@@ -9,7 +9,7 @@ import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import BrandLogo from '@/components/BrandLogo';
 import ViewerCount from '@/components/ViewerCount';
 import TaleOfTheTape from '@/components/TaleOfTheTape';
-import CastToTvHelp from '@/components/CastToTvHelp';
+import CastToTvButton from '@/components/CastToTvButton';
 import StreamHealth, { type StreamHealthStatus } from '@/components/StreamHealth';
 import LiveUpdateBanner from '@/components/LiveUpdateBanner';
 import ShareButton from '@/components/ShareButton';
@@ -126,7 +126,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
 
             <div className="flex flex-wrap items-center justify-center gap-2">
               <ShareButton />
-              <CastToTvHelp />
+              <CastToTvButton videoRef={videoRef} variant="toolbar" />
               <button
                 type="button"
                 onClick={onBackToHome}
@@ -188,6 +188,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
             src={streamUrl}
             fill={isFullscreen}
             videoRef={videoRef}
+            showCastButton
             onLiveChange={setIsLive}
             onHealthChange={setHealth}
             onRequestFullscreen={isFullscreen ? undefined : handleEnterFullscreen}
@@ -205,6 +206,12 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
             </div>
           )}
         </div>
+
+        {!isFullscreen && (
+          <div className="sm:hidden">
+            <CastToTvButton videoRef={videoRef} variant="prominent" />
+          </div>
+        )}
 
         {!isFullscreen && (
           <div className={isTheatre ? 'mx-auto w-full max-w-3xl' : 'w-full'}>

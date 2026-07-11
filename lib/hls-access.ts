@@ -11,9 +11,35 @@ export function getHlsPlaylistPath(): string {
   return '/api/hls/playlist';
 }
 
+/** Allow main manifest plus Cloudflare/Livepeer variant playlists and segments from the same stream. */
+export function isAllowedStreamTarget(targetUrl: string, mainStream: string): boolean {
+  if (targetUrl === mainStream) return true;
+
+  try {
+    const target = new URL(targetUrl);
+    const main = new URL(mainStream);
+    if (target.protocol !== main.protocol) return false;
+
+    const sameHost =
+      target.hostname === main.hostname ||
+      target.hostname.endsWith(`.${main.hostname}`) ||
+      main.hostname.endsWith(`.${target.hostname}`);
+
+    if (!sameHost) return false;
+
+    const targetParts = target.pathname.split('/').filter(Boolean);
+    const mainParts = main.pathname.split('/').filter(Boolean);
+    if (targetParts.length < 2 || mainParts.length < 2) return false;
+
+    return targetParts[0] === mainParts[0] && targetParts[1] === mainParts[1];
+  } catch {
+    return false;
+  }
+}
+
 export async function canProxyStream(request: Request, targetUrl: string): Promise<boolean> {
   const mainStream = getStreamUrl();
-  if (!mainStream || targetUrl !== mainStream) {
+  if (!mainStream || !isAllowedStreamTarget(targetUrl, mainStream)) {
     return false;
   }
 

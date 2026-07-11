@@ -77,7 +77,11 @@ export async function POST(request: Request) {
 
       const minted = await mintSessionForEmail(email);
       if (!minted) {
-        return NextResponse.json({ error: 'Could not sign you in' }, { status: 500 });
+        return NextResponse.json({
+          paid: true,
+          needsPassword: true,
+          email,
+        });
       }
 
       if (!isMultiDeviceEmail(email)) {

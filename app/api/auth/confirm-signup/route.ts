@@ -12,9 +12,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Valid email and password required' }, { status: 400 });
     }
 
-    const ok = await confirmSignupUser(email.trim(), password);
-    if (!ok) {
-      return NextResponse.json({ error: 'Could not confirm account' }, { status: 500 });
+    const result = await confirmSignupUser(email.trim(), password);
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: result.error ?? 'Could not confirm account' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });

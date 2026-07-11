@@ -115,10 +115,10 @@ export default function LandingFunnel({
           className="scroll-mt-28 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 sm:rounded-3xl sm:p-8"
         >
           <h2 className="mb-2 text-center text-lg font-semibold text-gray-200">
-            {authMode === 'login' ? 'Log in' : 'Optional: chat account'}
+            {authMode === 'login' ? 'Log in' : 'Create password to watch'}
           </h2>
           <p className="mb-5 text-center text-sm text-gray-500">
-            Only needed for live chat on multiple devices. Pay with email above — no password required.
+            Already paid? Use the same email from checkout and choose a password below. Or pay with email only above — no password needed.
           </p>
 
           {message && <p className="mb-4 text-center text-sm text-red-400">{message}</p>}
@@ -150,7 +150,7 @@ export default function LandingFunnel({
                 ? 'Please wait…'
                 : authMode === 'login'
                   ? 'Log in'
-                  : 'Create account'}
+                  : 'Create password & watch'}
             </button>
           </form>
 

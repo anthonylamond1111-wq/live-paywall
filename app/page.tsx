@@ -31,7 +31,10 @@ type View = 'loading' | 'auth' | 'pay' | 'success' | 'stream';
 
 function friendlyAuthError(message: string): string {
   if (/rate limit|rate exceeded|too many.*email/i.test(message)) {
-    return 'Email limit reached — you do not need an account to pay. Enter your email above the Pay button instead.';
+    return 'Too many attempts — enter your email above the Pay button. No account needed to pay.';
+  }
+  if (/invalid login credentials/i.test(message)) {
+    return 'Wrong password. Already paid? Use your checkout email and tap Create account to set a password.';
   }
   return message;
 }
@@ -56,7 +59,17 @@ type VerifyResult = {
   status?: string;
   access_token?: string;
   refresh_token?: string;
+  needsPassword?: boolean;
+  email?: string;
 };
+
+function promptPaidPasswordSetup(verified: VerifyResult, setEmail: (v: string) => void, setAuthMode: (m: 'login' | 'signup') => void, setMessage: (m: string) => void, setView: (v: View) => void) {
+  if (verified.email) setEmail(verified.email);
+  setAuthMode('signup');
+  setMessage('Payment successful! Create a password with the same email you paid with, then you can watch live.');
+  setView('auth');
+  window.history.replaceState({}, '', window.location.pathname);
+}
 
 async function verifyCheckoutSession(
   stripeSessionId: string,
@@ -195,6 +208,11 @@ export default function UFCAccess() {
           return;
         }
 
+        if (verified.paid && verified.needsPassword) {
+          promptPaidPasswordSetup(verified, setEmail, setAuthMode, setMessage, setView);
+          return;
+        }
+
         if (verified.status && verified.status !== 'paid') {
           setMessage('Payment is still processing. Refresh in a minute.');
           setView('pay');
@@ -265,6 +283,11 @@ export default function UFCAccess() {
 
         if (!mounted) return;
 
+        if (verified.paid && verified.needsPassword) {
+          promptPaidPasswordSetup(verified, setEmail, setAuthMode, setMessage, setView);
+          return;
+        }
+
         if (current && verified.paid) {
           setSession(current);
           window.history.replaceState({}, '', window.location.pathname);
@@ -291,6 +314,16 @@ export default function UFCAccess() {
         window.history.replaceState({}, '', window.location.pathname);
         setView('auth');
       } else {
+        const accessRes = await fetch('/api/access', { credentials: 'include' });
+        if (accessRes.ok) {
+          const accessData = (await accessRes.json()) as { paid?: boolean; guest?: boolean };
+          if (accessData.paid && accessData.guest) {
+            setAuthMode('signup');
+            setMessage('You already paid — create a password below using the same email from checkout.');
+            setView('auth');
+            return;
+          }
+        }
         setView('auth');
       }
     };

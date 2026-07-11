@@ -269,6 +269,26 @@ export async function findUserIdByEmail(email: string): Promise<string | null> {
   if (!supabase) return null;
 
   const normalized = normalizeEmail(email);
+
+  try {
+    const { data, error } = await supabase
+      .schema('auth')
+      .from('users')
+      .select('id')
+      .eq('email', normalized)
+      .maybeSingle();
+
+    if (!error && data?.id) {
+      return data.id as string;
+    }
+
+    if (error) {
+      console.error('findUserIdByEmail auth query error:', error.message);
+    }
+  } catch (err) {
+    console.error('findUserIdByEmail auth schema error:', err);
+  }
+
   let page = 1;
 
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -311,9 +331,12 @@ export async function ensureUserForCheckout(email: string): Promise<string | nul
   return data.user.id;
 }
 
-export async function confirmSignupUser(email: string, password: string): Promise<boolean> {
+export async function confirmSignupUser(
+  email: string,
+  password: string
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getServiceSupabase();
-  if (!supabase) return false;
+  if (!supabase) return { ok: false, error: 'Sign-in is not configured.' };
 
   const normalized = normalizeEmail(email);
   const existingId = await findUserIdByEmail(normalized);
@@ -323,7 +346,10 @@ export async function confirmSignupUser(email: string, password: string): Promis
       email_confirm: true,
       password,
     });
-    return !error;
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
   }
 
   const { error } = await supabase.auth.admin.createUser({
@@ -333,10 +359,57 @@ export async function confirmSignupUser(email: string, password: string): Promis
   });
 
   if (error) {
+    if (/already|exists|registered/i.test(error.message)) {
+      const retryId = await findUserIdByEmail(normalized);
+      if (retryId) {
+        const { error: updateError } = await supabase.auth.admin.updateUserById(retryId, {
+          email_confirm: true,
+          password,
+        });
+        if (!updateError) return { ok: true };
+        return { ok: false, error: updateError.message };
+      }
+    }
     console.error('confirmSignupUser error:', error.message);
+    return { ok: false, error: error.message };
   }
 
-  return !error;
+  return { ok: true };
+}
+
+async function signInWithAdminPassword(email: string) {
+  const supabase = getServiceSupabase();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabase || !url || !anonKey) return null;
+
+  const normalized = normalizeEmail(email);
+  const userId = await findUserIdByEmail(normalized);
+  if (!userId) return null;
+
+  const tempPassword = crypto.randomUUID();
+  const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+    email_confirm: true,
+    password: tempPassword,
+  });
+
+  if (updateError) {
+    console.error('mintSessionForEmail password fallback error:', updateError.message);
+    return null;
+  }
+
+  const anonClient = createClient(url, anonKey);
+  const { data, error } = await anonClient.auth.signInWithPassword({
+    email: normalized,
+    password: tempPassword,
+  });
+
+  if (error || !data.session) {
+    console.error('mintSessionForEmail signIn fallback error:', error?.message);
+    return null;
+  }
+
+  return data.session;
 }
 
 export async function mintSessionForEmail(email: string) {
@@ -345,14 +418,16 @@ export async function mintSessionForEmail(email: string) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabase || !url || !anonKey) return null;
 
+  const normalized = normalizeEmail(email);
+
   const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
-    email: normalizeEmail(email),
+    email: normalized,
   });
 
   if (linkError || !linkData.properties?.hashed_token) {
     console.error('mintSessionForEmail link error:', linkError?.message);
-    return null;
+    return signInWithAdminPassword(normalized);
   }
 
   const anonClient = createClient(url, anonKey);
@@ -363,7 +438,7 @@ export async function mintSessionForEmail(email: string) {
 
   if (verifyError || !sessionData.session) {
     console.error('mintSessionForEmail verify error:', verifyError?.message);
-    return null;
+    return signInWithAdminPassword(normalized);
   }
 
   return sessionData.session;

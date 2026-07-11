@@ -20,12 +20,22 @@ export function isAllowedStreamTarget(targetUrl: string, mainStream: string): bo
     const main = new URL(mainStream);
     if (target.protocol !== main.protocol) return false;
 
-    const sameHost =
-      target.hostname === main.hostname ||
-      target.hostname.endsWith(`.${main.hostname}`) ||
-      main.hostname.endsWith(`.${target.hostname}`);
+    const isCloudflareStream =
+      main.hostname.endsWith('.cloudflarestream.com') ||
+      main.hostname === 'cloudflarestream.com' ||
+      main.hostname.endsWith('.videodelivery.net') ||
+      main.hostname === 'videodelivery.net';
 
-    if (!sameHost) return false;
+    // Cloudflare encodes tracks under different path IDs — same customer host is enough.
+    if (isCloudflareStream) {
+      return target.hostname === main.hostname;
+    }
+
+    const livepeerMatch = main.pathname.match(/^\/hls\/([^/]+)/);
+    if (livepeerMatch) {
+      const playbackId = livepeerMatch[1];
+      return target.pathname.startsWith(`/hls/${playbackId}/`);
+    }
 
     const targetParts = target.pathname.split('/').filter(Boolean);
     const mainParts = main.pathname.split('/').filter(Boolean);

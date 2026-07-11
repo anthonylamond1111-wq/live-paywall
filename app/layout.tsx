@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { Suspense } from 'react';
+import GoogleAnalytics, { GoogleAnalyticsPageView } from '@/components/GoogleAnalytics';
 import './globals.css';
 
 const geistSans = Geist({
@@ -61,7 +63,13 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-black text-white">{children}</body>
+      <body className="min-h-full flex flex-col bg-black text-white">
+        <GoogleAnalytics />
+        <Suspense fallback={null}>
+          <GoogleAnalyticsPageView />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }

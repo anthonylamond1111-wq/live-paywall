@@ -12,6 +12,7 @@ import TaleOfTheTape from '@/components/TaleOfTheTape';
 import CastToTvButton from '@/components/CastToTvButton';
 import StreamHealth, { type StreamHealthStatus } from '@/components/StreamHealth';
 import LiveUpdateBanner from '@/components/LiveUpdateBanner';
+import StreamFeedbackPrompt from '@/components/StreamFeedbackPrompt';
 import ShareButton from '@/components/ShareButton';
 import { LANDING_FUNNEL_WIDTH } from '@/components/LandingFunnel';
 
@@ -98,6 +99,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
           : 'space-y-3 sm:space-y-4'
       }
     >
+      <StreamFeedbackPrompt streamLive={isLive} />
       {!isFullscreen && (
         <>
           <LiveUpdateBanner />

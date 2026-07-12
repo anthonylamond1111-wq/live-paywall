@@ -52,8 +52,20 @@ function friendlyCheckoutError(error: string): string {
   return error;
 }
 
+function arePaymentsEnabled() {
+  // Emergency kill switch: sales stay closed until PAYMENTS_ENABLED=true is set in Railway.
+  return process.env.PAYMENTS_ENABLED === 'true';
+}
+
 export async function POST(request: Request) {
   try {
+    if (!arePaymentsEnabled()) {
+      return NextResponse.json(
+        { error: 'Sales are closed for this event.', paymentsDisabled: true },
+        { status: 403 }
+      );
+    }
+
     const user = await getUserFromRequest(request);
     const token = getTokenFromRequest(request);
 

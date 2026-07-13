@@ -1,10 +1,15 @@
+import { hasFreeAccess } from '@/lib/free-access';
+
 /** Account allowed on multiple devices at once */
 export const MULTI_DEVICE_EMAIL = (
   process.env.NEXT_PUBLIC_MULTI_DEVICE_EMAIL ?? 'anthonylamond1111@gmail.com'
 ).toLowerCase();
 
 export function isMultiDeviceEmail(email: string | null | undefined): boolean {
-  return !!email && email.trim().toLowerCase() === MULTI_DEVICE_EMAIL;
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  // Owner + free-access comps (e.g. Callan) — no single-device kick
+  return normalized === MULTI_DEVICE_EMAIL || hasFreeAccess(normalized);
 }
 
 export function getSessionIdFromAccessToken(accessToken: string): string | null {

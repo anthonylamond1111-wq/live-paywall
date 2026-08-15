@@ -12,16 +12,18 @@ import {
   resolveUserAccess,
 } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 function isStripeTestMode() {
-  return (process.env.STRIPE_SECRET_KEY ?? '').startsWith('sk_test_');
+  return (process.env['STRIPE_SECRET_KEY'] ?? '').startsWith('sk_test_');
 }
 
 function getProductIdForMode() {
   if (isStripeTestMode()) {
-    return process.env.STRIPE_TEST_PRODUCT_ID ?? 'prod_Ur1ON2doXy6N8B';
+    return process.env['STRIPE_TEST_PRODUCT_ID'] ?? 'prod_Ur1ON2doXy6N8B';
   }
 
-  return process.env.STRIPE_PRODUCT_ID ?? 'prod_V4vYaTX0Q3L8RO';
+  return process.env['STRIPE_PRODUCT_ID'] ?? 'prod_V4vYaTX0Q3L8RO';
 }
 
 async function resolvePriceId(): Promise<string | null> {
@@ -53,8 +55,9 @@ function friendlyCheckoutError(error: string): string {
 }
 
 function arePaymentsEnabled() {
-  // Emergency kill switch: sales stay closed until PAYMENTS_ENABLED=true is set in Railway.
-  return process.env.PAYMENTS_ENABLED === 'true';
+  // Kill switch: sales stay open unless PAYMENTS_ENABLED=false is set in Railway.
+  // Bracket access + force-dynamic so this is read at request time, not inlined at build.
+  return process.env['PAYMENTS_ENABLED'] !== 'false';
 }
 
 export async function POST(request: Request) {

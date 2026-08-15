@@ -1,15 +1,16 @@
-/** HLS source URL — set STREAM_URL in Railway (Cloudflare, Mux, etc.) */
+/** HLS source — new Cloudflare Stream account. Override with STREAM_URL in Railway. */
+const DEFAULT_STREAM_URL =
+  'https://customer-q44h5snfqbxzias7.cloudflarestream.com/d1cf1e4008d8c121f8f1ae2fa4f89bd7/manifest/video.m3u8';
+
 export function getStreamUrl(): string {
-  if (process.env.STREAM_URL) {
-    return process.env.STREAM_URL;
+  const configured = process.env.STREAM_URL ?? DEFAULT_STREAM_URL;
+
+  // Ignore the old Cloudflare account playback URL after the switch.
+  if (configured.includes('customer-3gbpbuevsi4kojvq')) {
+    return DEFAULT_STREAM_URL;
   }
 
-  const playbackId = process.env.LIVEPEER_PLAYBACK_ID;
-  if (playbackId) {
-    return `https://livepeercdn.studio/hls/${playbackId}/index.m3u8`;
-  }
-
-  return '';
+  return configured;
 }
 
 /** Browser-facing URL — proxied through our API for reliable HLS playback */

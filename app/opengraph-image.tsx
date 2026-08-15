@@ -1,10 +1,10 @@
 import { ImageResponse } from 'next/og';
 import { EVENT } from '@/lib/event';
 
-export const runtime = 'nodejs';
 export const alt = 'UFC Access — Live Stream';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
+export const dynamic = 'force-dynamic';
 
 export default function OpenGraphImage() {
   return new ImageResponse(
@@ -22,18 +22,54 @@ export default function OpenGraphImage() {
           fontFamily: 'system-ui, sans-serif',
         }}
       >
-        <div style={{ fontSize: 28, letterSpacing: 8, color: '#ef4444', marginBottom: 24 }}>
+        <div
+          style={{
+            display: 'flex',
+            fontSize: 28,
+            letterSpacing: 8,
+            color: '#ef4444',
+            marginBottom: 24,
+          }}
+        >
           {EVENT.number} • LIVE
         </div>
-        <div style={{ fontSize: 72, fontWeight: 900, textAlign: 'center', lineHeight: 1.1 }}>
+        <div
+          style={{
+            display: 'flex',
+            fontSize: 72,
+            fontWeight: 900,
+            textAlign: 'center',
+            lineHeight: 1.1,
+          }}
+        >
           {EVENT.fighter1}
         </div>
-        <div style={{ fontSize: 32, color: '#6b7280', margin: '12px 0' }}>VS</div>
-        <div style={{ fontSize: 72, fontWeight: 900, textAlign: 'center', lineHeight: 1.1 }}>
+        <div style={{ display: 'flex', fontSize: 32, color: '#6b7280', margin: '12px 0' }}>
+          VS
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            fontSize: 72,
+            fontWeight: 900,
+            textAlign: 'center',
+            lineHeight: 1.1,
+          }}
+        >
           {EVENT.fighter2}
         </div>
-        <div style={{ fontSize: 24, color: '#9ca3af', marginTop: 32 }}>{EVENT.tagline}</div>
-        <div style={{ fontSize: 20, color: '#dc2626', marginTop: 48, fontWeight: 700 }}>
+        <div style={{ display: 'flex', fontSize: 24, color: '#9ca3af', marginTop: 32 }}>
+          {EVENT.tagline}
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            fontSize: 20,
+            color: '#dc2626',
+            marginTop: 48,
+            fontWeight: 700,
+          }}
+        >
           UFC ACCESS
         </div>
       </div>

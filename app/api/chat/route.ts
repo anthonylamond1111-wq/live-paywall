@@ -9,6 +9,7 @@ import { chatDisplayName } from '@/lib/chat-display';
 import { sanitizeChatUsername } from '@/lib/chat-username';
 import { isChatAdmin } from '@/lib/chat-admin';
 import { checkUserCanChat } from '@/lib/chat-moderation';
+import { getStreamAccessStartedAtIso } from '@/lib/stream-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,10 +45,21 @@ export async function GET(request: Request) {
   }
 
   const block = await checkUserCanChat(supabase, user.id);
+  const eventStartedAt = getStreamAccessStartedAtIso();
+
+  const { error: clearError } = await supabase
+    .from('chat_messages')
+    .delete()
+    .lt('created_at', eventStartedAt);
+
+  if (clearError) {
+    console.error('Chat clear error:', clearError.message);
+  }
 
   const { data, error } = await supabase
     .from('chat_messages')
     .select('id, user_id, display_name, body, created_at')
+    .gte('created_at', eventStartedAt)
     .order('created_at', { ascending: false })
     .limit(MESSAGE_LIMIT);
 

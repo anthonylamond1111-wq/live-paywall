@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getStripe } from '@/lib/stripe';
 import { accessCookieOptions } from '@/lib/access-cookie';
+import { isCurrentStreamPayment } from '@/lib/stream-access';
 import {
   ensureUserForCheckout,
   getTokenFromRequest,
@@ -34,6 +35,13 @@ export async function POST(request: Request) {
       return NextResponse.json({
         paid: false,
         status: session.payment_status,
+      });
+    }
+
+    if (!isCurrentStreamPayment(session.created)) {
+      return NextResponse.json({
+        paid: false,
+        status: 'expired_event',
       });
     }
 

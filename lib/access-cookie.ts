@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { getStripe } from '@/lib/stripe';
+import { isCurrentStreamPayment } from '@/lib/stream-access';
 
 export const ACCESS_COOKIE = 'ufc_stream_access';
 
@@ -14,7 +15,9 @@ export async function hasPaidAccess(sessionId?: string | null): Promise<boolean>
 
   try {
     const session = await getStripe().checkout.sessions.retrieve(id);
-    return session.payment_status === 'paid';
+    return (
+      session.payment_status === 'paid' && isCurrentStreamPayment(session.created)
+    );
   } catch {
     return false;
   }

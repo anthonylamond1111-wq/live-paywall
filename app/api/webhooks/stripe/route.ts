@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
+import { isCurrentStreamPayment } from '@/lib/stream-access';
 import { recordPurchase } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
-    if (session.payment_status === 'paid') {
+    if (session.payment_status === 'paid' && isCurrentStreamPayment(session.created)) {
       const userId = session.metadata?.user_id ?? session.client_reference_id;
       if (userId) {
         const saved = await recordPurchase(userId, session.id);

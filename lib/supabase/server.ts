@@ -3,6 +3,11 @@ import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe';
 import { hasFreeAccess } from '@/lib/free-access';
 import {
+  getStreamAccessStartedAtIso,
+  getStreamAccessStartedAtUnix,
+  isCurrentStreamPayment,
+} from '@/lib/stream-access';
+import {
   getSessionIdFromAccessToken,
   isMultiDeviceEmail,
 } from '@/lib/single-device-auth';
@@ -130,6 +135,7 @@ async function queryPurchaseExists(
     .from('purchases')
     .select('id')
     .eq('user_id', userId)
+    .gte('created_at', getStreamAccessStartedAtIso())
     .limit(1);
 
   if (error) {
@@ -213,7 +219,7 @@ export async function findPaidStripeSessionForUser(
   user: User
 ): Promise<Stripe.Checkout.Session | null> {
   const stripe = getStripe();
-  const since = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+  const since = getStreamAccessStartedAtUnix();
   let startingAfter: string | undefined;
 
   for (let page = 0; page < 10; page++) {
@@ -226,6 +232,7 @@ export async function findPaidStripeSessionForUser(
 
     for (const checkoutSession of sessions.data) {
       if (!isPaidCheckoutSession(checkoutSession)) continue;
+      if (!isCurrentStreamPayment(checkoutSession.created)) continue;
       if (stripeSessionMatchesUser(checkoutSession, user)) {
         return checkoutSession;
       }

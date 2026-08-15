@@ -1,8 +1,8 @@
 export const SITE_LOCK_COOKIE = 'ufc_site_unlock';
 
-/** Emergency site lock — off unless SITE_LOCK_ENABLED=true in Railway. */
+/** Emergency site lock — disabled for UFC 330. Set SITE_LOCK_ENABLED=true to turn back on. */
 export function isSiteLockEnabled(): boolean {
-  return process.env.SITE_LOCK_ENABLED === 'true';
+  return false;
 }
 
 /** Change via SITE_LOCK_PASSWORD in Railway. */

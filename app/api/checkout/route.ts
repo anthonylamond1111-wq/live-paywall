@@ -13,17 +13,23 @@ import {
 } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+function readRuntimeEnv(key: string): string | undefined {
+  // Dynamic key so Next.js cannot replace this with a build-time constant.
+  return process.env[key];
+}
 
 function isStripeTestMode() {
-  return (process.env['STRIPE_SECRET_KEY'] ?? '').startsWith('sk_test_');
+  return (readRuntimeEnv('STRIPE_SECRET_KEY') ?? '').startsWith('sk_test_');
 }
 
 function getProductIdForMode() {
   if (isStripeTestMode()) {
-    return process.env['STRIPE_TEST_PRODUCT_ID'] ?? 'prod_Ur1ON2doXy6N8B';
+    return readRuntimeEnv('STRIPE_TEST_PRODUCT_ID') ?? 'prod_Ur1ON2doXy6N8B';
   }
 
-  return process.env['STRIPE_PRODUCT_ID'] ?? 'prod_V4vYaTX0Q3L8RO';
+  return readRuntimeEnv('STRIPE_PRODUCT_ID') ?? 'prod_V4vYaTX0Q3L8RO';
 }
 
 async function resolvePriceId(): Promise<string | null> {
@@ -55,9 +61,9 @@ function friendlyCheckoutError(error: string): string {
 }
 
 function arePaymentsEnabled() {
-  // Kill switch: sales stay open unless PAYMENTS_ENABLED=false is set in Railway.
-  // Bracket access + force-dynamic so this is read at request time, not inlined at build.
-  return process.env['PAYMENTS_ENABLED'] !== 'false';
+  // Sales stay open unless PAYMENTS_ENABLED=false. Read at request time only.
+  const value = (readRuntimeEnv('PAYMENTS_ENABLED') ?? '').trim().toLowerCase();
+  return value !== 'false';
 }
 
 export async function POST(request: Request) {

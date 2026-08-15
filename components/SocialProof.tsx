@@ -16,7 +16,7 @@ export default function SocialProof() {
 
   return (
     <p className="text-center text-sm text-gray-400">
-      <span className="font-semibold text-white">{count}+</span> fans unlocked access tonight
+      <span className="font-semibold text-white">{count}+</span> previous buyers
     </p>
   );
 }

@@ -1,8 +1,8 @@
 export const SITE_LOCK_COOKIE = 'ufc_site_unlock';
 
-/** Emergency site lock — on until SITE_LOCK_ENABLED=false in Railway. */
+/** Emergency site lock — off unless SITE_LOCK_ENABLED=true in Railway. */
 export function isSiteLockEnabled(): boolean {
-  return process.env.SITE_LOCK_ENABLED !== 'false';
+  return process.env.SITE_LOCK_ENABLED === 'true';
 }
 
 /** Change via SITE_LOCK_PASSWORD in Railway. */

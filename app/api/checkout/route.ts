@@ -21,7 +21,7 @@ function getProductIdForMode() {
     return process.env.STRIPE_TEST_PRODUCT_ID ?? 'prod_Ur1ON2doXy6N8B';
   }
 
-  return process.env.STRIPE_PRODUCT_ID ?? 'prod_Ur1s5kDE1mccbJ';
+  return process.env.STRIPE_PRODUCT_ID ?? 'prod_V4vYaTX0Q3L8RO';
 }
 
 async function resolvePriceId(): Promise<string | null> {

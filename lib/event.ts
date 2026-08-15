@@ -19,15 +19,20 @@ export type FAQItem = {
   a: string;
 };
 
+const DEFAULT_EVENT_START = '2026-08-15T21:30:00.000Z';
+const configuredEventStart =
+  process.env.NEXT_PUBLIC_EVENT_START_ISO ?? DEFAULT_EVENT_START;
+
 export const EVENT = {
-  number: 'UFC 329',
-  tagline: 'THE NOTORIOUS RETURNS',
-  fighter1: 'MCGREGOR',
-  fighter2: 'HOLLOWAY',
-  venue: 'T-Mobile Arena, Las Vegas',
-  streamStart:
-    process.env.NEXT_PUBLIC_EVENT_START_ISO ?? '2026-07-11T21:00:00.000Z',
-  streamStartLabel: 'Saturday 10:00 PM (UK)',
+  number: 'UFC 330',
+  tagline: 'WELTERWEIGHT TITLE',
+  fighter1: 'MAKHACHEV',
+  fighter2: 'GARRY',
+  venue: 'Xfinity Mobile Arena, Philadelphia',
+  streamStart: configuredEventStart.includes('2026-07-11')
+    ? DEFAULT_EVENT_START
+    : configuredEventStart,
+  streamStartLabel: 'Saturday 10:30 PM (UK)',
   replayMessage:
     'Your access includes the full live event. Replay available for 24 hours after the broadcast ends.',
   liveUpdateMessage: process.env.NEXT_PUBLIC_LIVE_UPDATE_MESSAGE ?? '',
@@ -35,28 +40,29 @@ export const EVENT = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.ufcaccess.co.uk',
   priceLabel: process.env.NEXT_PUBLIC_CHECKOUT_LABEL ?? 'Pay £2.50 to Join Live',
   fighter1Stats: {
-    name: 'Conor McGregor',
-    nickname: 'The Notorious',
-    record: '22–6',
-    height: "5'9\"",
-    reach: '74"',
+    name: 'Islam Makhachev',
+    nickname: 'The Eagle',
+    record: '28–1',
+    height: "5'10\"",
+    reach: '70"',
     stance: 'Southpaw',
-    country: 'Ireland',
+    country: 'Russia',
   } satisfies FighterStats,
   fighter2Stats: {
-    name: 'Max Holloway',
-    nickname: 'Blessed',
-    record: '26–8',
-    height: "5'11\"",
-    reach: '69"',
+    name: 'Ian Machado Garry',
+    nickname: 'The Future',
+    record: '17–1',
+    height: "6'3\"",
+    reach: '74"',
     stance: 'Orthodox',
-    country: 'USA',
+    country: 'Ireland',
   } satisfies FighterStats,
   fightCard: [
-    { fighters: 'Conor McGregor vs Max Holloway', weight: 'Lightweight', main: true },
-    { fighters: 'Sean O\'Malley vs Song Yadong', weight: 'Bantamweight' },
-    { fighters: 'Alex Pereira vs Khalil Rountree Jr.', weight: 'Light Heavyweight' },
-    { fighters: 'Dustin Poirier vs Benoit Saint Denis', weight: 'Lightweight' },
+    { fighters: 'Islam Makhachev vs Ian Machado Garry', weight: 'Welterweight Title', main: true },
+    { fighters: 'Mackenzie Dern vs Gillian Robertson', weight: "Women's Strawweight Title" },
+    { fighters: 'Jalin Turner vs Kauê Fernandes', weight: 'Lightweight' },
+    { fighters: 'Mansur Abdul-Malik vs Dustin Stoltzfus', weight: 'Middleweight' },
+    { fighters: 'Edson Barboza vs Esteban Ribovics', weight: 'Lightweight' },
   ] satisfies FightBout[],
   perks: [
     'Full HD live stream',

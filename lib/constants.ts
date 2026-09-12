@@ -1,6 +1,6 @@
 /** HLS source — Cloudflare Stream account. Override with STREAM_URL in Railway. */
 const DEFAULT_STREAM_URL =
-  'https://customer-73sqkglr4jzrnjf4.cloudflarestream.com/k7e4c2b36fe4afecafc1469f1d3e4b20c/manifest/video.m3u8';
+  'https://customer-73sqkglr4jzrnjf4.cloudflarestream.com/7e4c2b36fe4afecafc1469f1d3e4b20c/manifest/video.m3u8';
 
 const LEGACY_STREAM_HOSTS = [
   'customer-3gbpbuevsi4kojvq',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { SITE_NAME } from '@/lib/brand';
 import { EVENT } from '@/lib/event';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
@@ -17,13 +18,13 @@ export default function ShareButton({ variant = 'default', className = '' }: Sha
     const text =
       variant === 'promo'
         ? `${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}. 60 sec free preview, then £2.50 for full HD + live chat.`
-        : `${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}. Watch live on UFC Access.`;
+        : `${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}. Watch live on ${SITE_NAME}.`;
 
     trackAnalytics(AnalyticsEvents.SHARE, { variant });
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'UFC Access', text, url });
+        await navigator.share({ title: SITE_NAME, text, url });
         return;
       } catch {
         // User cancelled or unsupported

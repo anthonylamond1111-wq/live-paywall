@@ -1,3 +1,4 @@
+import { SITE_NAME } from '@/lib/brand';
 import { EVENT } from '@/lib/event';
 
 function formatIcsDate(iso: string) {
@@ -13,14 +14,14 @@ export function downloadEventCalendar() {
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//UFC Access//EN',
+    `PRODID:-//${SITE_NAME}//EN`,
     'BEGIN:VEVENT',
     `UID:ufc-access-${EVENT.number.replace(/\s/g, '-')}@ufcaccess.co.uk`,
     `DTSTAMP:${formatIcsDate(new Date().toISOString())}`,
     `DTSTART:${start}`,
     `DTEND:${end}`,
     `SUMMARY:${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}`,
-    `DESCRIPTION:UFC Access live stream. ${EVENT.siteUrl}`,
+    `DESCRIPTION:${SITE_NAME} live stream. ${EVENT.siteUrl}`,
     `LOCATION:${EVENT.venue}`,
     'END:VEVENT',
     'END:VCALENDAR',
@@ -44,7 +45,7 @@ export function getGoogleCalendarUrl() {
     action: 'TEMPLATE',
     text: `${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}`,
     dates: `${fmt(start)}/${fmt(end)}`,
-    details: `Watch live on UFC Access: ${EVENT.siteUrl}`,
+    details: `Watch live on ${SITE_NAME}: ${EVENT.siteUrl}`,
     location: EVENT.venue,
   });
 

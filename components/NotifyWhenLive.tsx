@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { SITE_NAME } from '@/lib/brand';
 import { hasStreamStarted } from '@/lib/event';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
@@ -29,7 +30,7 @@ export default function NotifyWhenLive() {
 
     const check = () => {
       if (hasStreamStarted() && document.hidden) {
-        new Notification('UFC Access — Stream is live!', {
+        new Notification(`${SITE_NAME} — Stream is live!`, {
           body: 'The broadcast has started. Tap to watch now.',
           icon: '/icon.svg',
         });

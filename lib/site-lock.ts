@@ -1,6 +1,6 @@
 export const SITE_LOCK_COOKIE = 'ufc_site_unlock';
 
-/** Emergency site lock — disabled for UFC 330. Set SITE_LOCK_ENABLED=true to turn back on. */
+/** Emergency site lock — disabled for Garcia vs Benn. Set SITE_LOCK_ENABLED=true to turn back on. */
 export function isSiteLockEnabled(): boolean {
   return false;
 }

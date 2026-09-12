@@ -1,5 +1,6 @@
 'use client';
 
+import { SITE_NAME } from '@/lib/brand';
 import { EVENT } from '@/lib/event';
 import JourneyProgress from '@/components/JourneyProgress';
 
@@ -53,7 +54,7 @@ export default function FightNightLanding({
               </p>
 
               <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400 sm:text-[11px]">
-                Available exclusively on UFC Access
+                Available exclusively on {SITE_NAME}
               </p>
 
               <div className="mt-5 flex flex-col gap-3 sm:mt-6">

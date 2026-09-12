@@ -1,7 +1,8 @@
+import { SITE_NAME } from '@/lib/brand';
 import { isChatAdmin, OWNER_EMAIL } from '@/lib/chat-admin';
 
 export const OWNER_DISPLAY_NAME =
-  process.env.OWNER_CHAT_NAME ?? 'UFC Access (Owner)';
+  process.env.OWNER_CHAT_NAME ?? `${SITE_NAME} (Owner)`;
 
 export function chatDisplayName(email?: string | null): string {
   if (email?.toLowerCase() === OWNER_EMAIL) {

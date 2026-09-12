@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import BrandLogo from '@/components/BrandLogo';
+import { SITE_NAME } from '@/lib/brand';
 import {
   isTouchDevice,
   playBrandIntroSoundFromGesture,
@@ -47,7 +48,7 @@ export default function BrandIntro() {
   return (
     <button
       type="button"
-      aria-label="Enter UFC Access"
+      aria-label={`Enter ${SITE_NAME}`}
       onPointerDown={handlePointerDown}
       className="brand-intro fixed inset-0 z-[200] flex touch-manipulation cursor-pointer items-center justify-center border-0 bg-black p-0 text-left [-webkit-tap-highlight-color:transparent]"
     >

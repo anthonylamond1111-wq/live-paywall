@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { SITE_NAME } from '@/lib/brand';
 import { EVENT } from '@/lib/event';
 import SiteFooter from '@/components/SiteFooter';
 import FAQ from '@/components/FAQ';
@@ -13,7 +14,7 @@ export default function SupportPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const subject = encodeURIComponent('UFC Access Support');
+    const subject = encodeURIComponent(`${SITE_NAME} Support`);
     const body = encodeURIComponent(
       `Name: ${name}\nEmail: ${email}\n\n${message}`
     );
@@ -24,7 +25,7 @@ export default function SupportPage() {
     <div className="min-h-[100dvh] bg-black px-4 py-16 text-white">
       <div className="mx-auto max-w-2xl">
         <Link href="/" className="text-sm text-red-400 hover:underline">
-          ← Back to UFC Access
+          ← Back to {SITE_NAME}
         </Link>
 
         <h1 className="mt-6 text-3xl font-bold">Support</h1>

@@ -1,7 +1,8 @@
 import { ImageResponse } from 'next/og';
+import { SITE_NAME_DISPLAY } from '@/lib/brand';
 import { EVENT } from '@/lib/event';
 
-export const alt = 'UFC Access — Live Stream';
+export const alt = `${SITE_NAME_DISPLAY} — Live Stream`;
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 export const dynamic = 'force-dynamic';
@@ -70,7 +71,7 @@ export default function OpenGraphImage() {
             fontWeight: 700,
           }}
         >
-          UFC ACCESS
+          {SITE_NAME_DISPLAY}
         </div>
       </div>
     ),

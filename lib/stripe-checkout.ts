@@ -1,3 +1,4 @@
+import { SITE_NAME } from '@/lib/brand';
 import { EVENT } from '@/lib/event';
 
 export const STRIPE_CHECKOUT_PRODUCT = {
@@ -6,7 +7,7 @@ export const STRIPE_CHECKOUT_PRODUCT = {
 } as const;
 
 export const STRIPE_CHECKOUT_BRANDING = {
-  display_name: 'UFC Access',
+  display_name: SITE_NAME,
   background_color: '#000000',
   button_color: '#ffffff',
   border_style: 'rounded' as const,

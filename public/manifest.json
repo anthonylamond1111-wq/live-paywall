@@ -1,7 +1,7 @@
 {
-  "name": "UFC Access",
-  "short_name": "UFC Access",
-  "description": "Private live UFC stream access",
+  "name": "UFC Access X Boxing",
+  "short_name": "UFC Access X Boxing",
+  "description": "Private live boxing stream access",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

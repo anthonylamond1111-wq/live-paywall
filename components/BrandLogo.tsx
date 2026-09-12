@@ -1,3 +1,5 @@
+import { SITE_NAME_DISPLAY } from '@/lib/brand';
+
 type BrandLogoProps = {
   size?: 'nav' | 'fullscreen' | 'intro';
   className?: string;
@@ -14,7 +16,7 @@ export default function BrandLogo({ size = 'nav', className = '' }: BrandLogoPro
     <span
       className={`brand-logo-flow font-black tracking-tight ${sizeClasses[size]} ${className}`}
     >
-      UFC ACCESS
+      {SITE_NAME_DISPLAY}
     </span>
   );
 }

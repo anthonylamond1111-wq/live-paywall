@@ -5,7 +5,9 @@ import GoogleAnalytics, { GoogleAnalyticsPageView } from '@/components/GoogleAna
 import DiscordHelpLink from '@/components/DiscordHelpLink';
 import IntroSoundPreloader from '@/components/IntroSoundPreloader';
 import SiteVisitorHeartbeat from '@/components/SiteVisitorHeartbeat';
+import { SITE_NAME } from '@/lib/brand';
 import { INTRO_SOUND_URL } from '@/lib/constants';
+import { EVENT } from '@/lib/event';
 import './globals.css';
 
 const geistSans = Geist({
@@ -19,30 +21,29 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.ufcaccess.co.uk';
-const ogDescription =
-  'UFC 330 — Makhachev vs Garry. Watch 60 seconds free, then £2.50 for full HD live stream + chat. Works on phone & TV.';
+const ogDescription = `${EVENT.number} — ${EVENT.fighter1Stats.name} vs ${EVENT.fighter2Stats.name}. Watch 60 seconds free, then £2.50 for full HD live stream + chat. Works on phone & TV.`;
 
 export const metadata: Metadata = {
-  title: 'UFC Access — UFC 330 Live Stream',
+  title: `${SITE_NAME} — ${EVENT.number} Live Stream`,
   description: ogDescription,
   metadataBase: new URL(siteUrl),
-  applicationName: 'UFC Access',
+  applicationName: SITE_NAME,
   appleWebApp: {
     capable: true,
-    title: 'UFC Access',
+    title: SITE_NAME,
     statusBarStyle: 'black-translucent',
   },
   openGraph: {
-    title: 'UFC 330 — Free 60 Sec Preview | UFC Access',
+    title: `${EVENT.number} — Free 60 Sec Preview | ${SITE_NAME}`,
     description: ogDescription,
     url: siteUrl,
-    siteName: 'UFC Access',
+    siteName: SITE_NAME,
     locale: 'en_GB',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'UFC 330 — Free Preview + £2.50 Full Stream',
+    title: `${EVENT.number} — Free Preview + £2.50 Full Stream`,
     description: ogDescription,
   },
   icons: {

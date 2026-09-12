@@ -1,5 +1,5 @@
 /** Purchases and Stripe sessions before this do not unlock the current stream. */
-const DEFAULT_STREAM_ACCESS_STARTED_AT = '2026-08-15T17:00:00.000Z';
+const DEFAULT_STREAM_ACCESS_STARTED_AT = '2026-09-12T00:00:00.000Z';
 
 export function getStreamAccessStartedAt(): Date {
   const raw = process.env.STREAM_ACCESS_STARTED_AT ?? DEFAULT_STREAM_ACCESS_STARTED_AT;

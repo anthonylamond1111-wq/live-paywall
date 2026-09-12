@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import SiteFooter from '@/components/SiteFooter';
+import { SITE_NAME } from '@/lib/brand';
 import { EVENT } from '@/lib/event';
 
 export default function RefundPage() {
@@ -7,7 +8,7 @@ export default function RefundPage() {
     <div className="min-h-[100dvh] bg-black px-4 py-16 text-white">
       <div className="mx-auto max-w-2xl">
         <Link href="/" className="text-sm text-red-400 hover:underline">
-          ← Back to UFC Access
+          ← Back to {SITE_NAME}
         </Link>
         <h1 className="mt-6 text-3xl font-bold">Refund Policy</h1>
         <div className="mt-6 space-y-4 text-sm leading-relaxed text-gray-400">

@@ -1,3 +1,5 @@
+import { SITE_NAME } from '@/lib/brand';
+
 export type FighterStats = {
   name: string;
   nickname: string;
@@ -19,20 +21,20 @@ export type FAQItem = {
   a: string;
 };
 
-const DEFAULT_EVENT_START = '2026-08-15T21:30:00.000Z';
+const DEFAULT_EVENT_START = '2026-09-13T03:00:00.000Z';
 const configuredEventStart =
   process.env.NEXT_PUBLIC_EVENT_START_ISO ?? DEFAULT_EVENT_START;
 
 export const EVENT = {
-  number: 'UFC 330',
-  tagline: 'WELTERWEIGHT TITLE',
-  fighter1: 'MAKHACHEV',
-  fighter2: 'GARRY',
-  venue: 'Xfinity Mobile Arena, Philadelphia',
-  streamStart: configuredEventStart.includes('2026-07-11')
+  number: 'Garcia vs Benn',
+  tagline: 'WBC WELTERWEIGHT TITLE',
+  fighter1: 'GARCIA',
+  fighter2: 'BENN',
+  venue: 'T-Mobile Arena, Las Vegas',
+  streamStart: configuredEventStart.includes('2026-08-15')
     ? DEFAULT_EVENT_START
     : configuredEventStart,
-  streamStartLabel: 'Saturday 10:30 PM (UK)',
+  streamStartLabel: 'Sunday 4:00 AM (UK)',
   replayMessage:
     'Your access includes the full live event. Replay available for 24 hours after the broadcast ends.',
   liveUpdateMessage: process.env.NEXT_PUBLIC_LIVE_UPDATE_MESSAGE ?? '',
@@ -40,29 +42,28 @@ export const EVENT = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.ufcaccess.co.uk',
   priceLabel: process.env.NEXT_PUBLIC_CHECKOUT_LABEL ?? 'Pay £2.50 to Join Live',
   fighter1Stats: {
-    name: 'Islam Makhachev',
-    nickname: 'The Eagle',
-    record: '28–1',
+    name: 'Ryan Garcia',
+    nickname: 'KingRy',
+    record: '25–2',
     height: "5'10\"",
-    reach: '70"',
-    stance: 'Southpaw',
-    country: 'Russia',
+    reach: '70.5"',
+    stance: 'Orthodox',
+    country: 'USA',
   } satisfies FighterStats,
   fighter2Stats: {
-    name: 'Ian Machado Garry',
-    nickname: 'The Future',
-    record: '17–1',
-    height: "6'3\"",
-    reach: '74"',
+    name: 'Conor Benn',
+    nickname: 'The Destroyer',
+    record: '25–1',
+    height: "5'9\"",
+    reach: '67"',
     stance: 'Orthodox',
-    country: 'Ireland',
+    country: 'UK',
   } satisfies FighterStats,
   fightCard: [
-    { fighters: 'Islam Makhachev vs Ian Machado Garry', weight: 'Welterweight Title', main: true },
-    { fighters: 'Mackenzie Dern vs Gillian Robertson', weight: "Women's Strawweight Title" },
-    { fighters: 'Jalin Turner vs Kauê Fernandes', weight: 'Lightweight' },
-    { fighters: 'Mansur Abdul-Malik vs Dustin Stoltzfus', weight: 'Middleweight' },
-    { fighters: 'Edson Barboza vs Esteban Ribovics', weight: 'Lightweight' },
+    { fighters: 'Ryan Garcia vs Conor Benn', weight: 'WBC Welterweight Title', main: true },
+    { fighters: 'Jose Ramirez vs Vlad Panin', weight: 'Super Lightweight' },
+    { fighters: 'Noel Mikaelian vs Raphael Akpejiori', weight: 'Heavyweight' },
+    { fighters: 'Damazion Vanhouter vs TBA', weight: 'Heavyweight' },
   ] satisfies FightBout[],
   perks: [
     'Full HD live stream',
@@ -72,8 +73,8 @@ export const EVENT = {
   ],
   faq: [
     {
-      q: 'Is this the official UFC broadcast?',
-      a: 'No — UFC Access is an independent private live stream. We are not affiliated with UFC or any official broadcast partner. You get our HD feed and live chat for a one-time fee.',
+      q: 'Is this the official broadcast?',
+      a: `No — ${SITE_NAME} is an independent private live stream. We are not affiliated with any official broadcast partner. You get our HD feed and live chat for a one-time fee.`,
     },
     {
       q: 'Will it work on my phone or TV?',

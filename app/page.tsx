@@ -547,7 +547,7 @@ export default function UFCAccess() {
         active={view !== 'loading'}
       />
       <BrandIntro />
-      <PageBackground />
+      <PageBackground showPoster={view !== 'stream'} />
       <AddToHomeScreen />
 
       <nav className="fixed top-0 z-50 w-full border-b border-red-600/80 bg-black/90 backdrop-blur-md">

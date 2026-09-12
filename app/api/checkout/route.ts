@@ -24,25 +24,31 @@ function isStripeTestMode() {
   return (readRuntimeEnv('STRIPE_SECRET_KEY') ?? '').startsWith('sk_test_');
 }
 
-function getProductIdForMode() {
-  if (isStripeTestMode()) {
-    return readRuntimeEnv('STRIPE_TEST_PRODUCT_ID') ?? 'prod_Ur1ON2doXy6N8B';
-  }
+const LIVE_PRODUCT_FALLBACK = 'prod_V4vYaTX0Q3L8RO';
+const TEST_PRODUCT_FALLBACK = 'prod_Ur1ON2doXy6N8B';
 
-  return readRuntimeEnv('STRIPE_PRODUCT_ID') ?? 'prod_V4vYaTX0Q3L8RO';
+function getProductIdCandidates(): string[] {
+  const configured = isStripeTestMode()
+    ? readRuntimeEnv('STRIPE_TEST_PRODUCT_ID')
+    : readRuntimeEnv('STRIPE_PRODUCT_ID');
+  const fallback = isStripeTestMode() ? TEST_PRODUCT_FALLBACK : LIVE_PRODUCT_FALLBACK;
+
+  return [...new Set([configured, fallback].filter(Boolean) as string[])];
 }
 
 async function resolvePriceId(): Promise<string | null> {
-  const productId = getProductIdForMode();
+  const stripe = getStripe();
 
-  if (productId) {
-    const stripe = getStripe();
-    const product = await stripe.products.retrieve(productId);
+  for (const productId of getProductIdCandidates()) {
+    try {
+      const product = await stripe.products.retrieve(productId);
+      if (!product.active || !product.default_price) continue;
 
-    if (product.default_price) {
       return typeof product.default_price === 'string'
         ? product.default_price
         : product.default_price.id;
+    } catch {
+      continue;
     }
   }
 

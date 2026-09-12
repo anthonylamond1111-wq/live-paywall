@@ -375,7 +375,9 @@ export default function UFCAccess() {
       }
 
       if (!res.ok || !data.url) {
-        setMessage(friendlyAuthError(data.error ?? 'Could not start payment.'));
+        const errorMessage = friendlyAuthError(data.error ?? 'Could not start payment.');
+        setMessage(errorMessage);
+        document.getElementById('pay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }
 
@@ -383,6 +385,7 @@ export default function UFCAccess() {
       window.location.href = data.url;
     } catch {
       setMessage('Payment could not be started.');
+      document.getElementById('pay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } finally {
       setBusy(false);
     }
@@ -646,6 +649,7 @@ export default function UFCAccess() {
               isLoggedIn={isLoggedIn}
               userEmail={session?.user.email}
               busy={busy}
+              message={message}
               onUnlock={handleUnlock}
             />
             <PaywallCard

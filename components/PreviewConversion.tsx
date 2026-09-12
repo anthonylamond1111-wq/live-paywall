@@ -12,6 +12,7 @@ type PreviewConversionProps = {
   isLoggedIn?: boolean;
   userEmail?: string | null;
   busy?: boolean;
+  message?: string;
 };
 
 const TRUST_POINTS = [
@@ -27,6 +28,7 @@ export default function PreviewConversion({
   isLoggedIn = false,
   userEmail,
   busy = false,
+  message,
 }: PreviewConversionProps) {
   return (
     <div
@@ -61,6 +63,12 @@ export default function PreviewConversion({
 
       {isLoggedIn && userEmail && (
         <p className="mt-5 text-center text-sm text-gray-500">Signed in as {userEmail}</p>
+      )}
+
+      {message && (
+        <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-300">
+          {message}
+        </p>
       )}
 
       <button

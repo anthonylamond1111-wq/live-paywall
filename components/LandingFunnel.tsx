@@ -192,6 +192,7 @@ export default function LandingFunnel({
           isLoggedIn={isLoggedIn}
           userEmail={userEmail}
           busy={busy}
+          message={message}
           onUnlock={handleUnlock}
         />
 

@@ -92,7 +92,7 @@ export default function SupportChatWidget() {
   };
 
   return (
-    <div className="pointer-events-none fixed bottom-[5.25rem] right-4 z-40 sm:bottom-6">
+    <div className="pointer-events-none fixed bottom-28 right-4 z-50">
       {open && (
         <div className="pointer-events-auto mb-3 flex w-[min(100vw-2rem,22rem)] flex-col overflow-hidden rounded-2xl border border-red-600/40 bg-zinc-950/95 shadow-2xl shadow-black/60 backdrop-blur-md sm:w-96">
           <div className="flex items-start justify-between gap-3 border-b border-zinc-800 bg-gradient-to-r from-red-950/40 to-black px-4 py-3">

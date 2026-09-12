@@ -83,7 +83,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <SiteVisitorHeartbeat />
         </Suspense>
-        <div className="pointer-events-none fixed bottom-[5.25rem] left-4 z-40 sm:bottom-6">
+        <div className="pointer-events-none fixed bottom-28 left-4 z-50">
           <DiscordHelpLink className="pointer-events-auto shadow-lg shadow-black/40" />
         </div>
         <SupportChatWidget />

@@ -52,8 +52,8 @@ export const MAX_STREAM_HEIGHT = Math.max(
   Number(process.env.NEXT_PUBLIC_MAX_STREAM_HEIGHT ?? '1080')
 );
 
-/** Phones stay on 720p — much smoother on mobile data */
+/** Phones can reach 1080p when bandwidth allows; ABR keeps lower tiers available */
 export const MOBILE_MAX_STREAM_HEIGHT = Math.max(
   360,
-  Number(process.env.NEXT_PUBLIC_MOBILE_MAX_STREAM_HEIGHT ?? '720')
+  Number(process.env.NEXT_PUBLIC_MOBILE_MAX_STREAM_HEIGHT ?? '1080')
 );

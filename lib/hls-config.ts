@@ -81,12 +81,12 @@ export function createStreamHlsConfig() {
     maxMaxBufferLength: mobile ? 60 : 80,
     maxBufferSize: 60 * 1000 * 1000,
     maxBufferHole: 0.5,
-    capLevelToPlayerSize: mobile,
-    capLevelOnFPSDrop: true,
+    capLevelToPlayerSize: false,
+    capLevelOnFPSDrop: false,
     testBandwidth: true,
-    abrEwmaDefaultEstimate: mobile ? 1_500_000 : 3_500_000,
-    abrBandWidthFactor: 0.88,
-    abrBandWidthUpFactor: 0.55,
+    abrEwmaDefaultEstimate: mobile ? 2_500_000 : 8_000_000,
+    abrBandWidthFactor: 0.92,
+    abrBandWidthUpFactor: mobile ? 0.7 : 0.92,
     abrMaxWithRealBitrate: true,
     fragLoadingMaxRetry: 8,
     manifestLoadingMaxRetry: 4,
@@ -96,12 +96,11 @@ export function createStreamHlsConfig() {
 
 export function getSafeStartLevel(levels: Level[]): number {
   const maxHeight = getEffectiveMaxHeight();
-  const target = isMobileDevice() ? 480 : 720;
-  return pickLevelByHeight(levels, Math.min(target, maxHeight), true);
+  if (isMobileDevice()) {
+    return pickLevelByHeight(levels, Math.min(720, maxHeight), true);
+  }
+  return getMaxLevelIndex(levels, maxHeight);
 }
-
-/** Desktop only — wait for a stable buffer before unlocking 1080p auto. */
-export const DESKTOP_HD_RAMP_BUFFER_SECONDS = 18;
 
 /** Drop renditions above maxHeight from a multivariant master playlist. */
 export function capPlaylistResolutions(body: string, maxHeight: number): string {

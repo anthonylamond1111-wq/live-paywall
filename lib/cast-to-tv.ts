@@ -60,9 +60,8 @@ export async function promptCastToTv(
 
 export function isMobileDevice(): boolean {
   if (typeof window === 'undefined') return false;
-  return (
-    window.matchMedia('(max-width: 768px)').matches ||
-    'ontouchstart' in window ||
-    navigator.maxTouchPoints > 0
+  if (window.matchMedia('(max-width: 768px)').matches) return true;
+  return /android|iphone|ipad|ipod|mobile|webos|blackberry|iemobile|opera mini/i.test(
+    navigator.userAgent
   );
 }

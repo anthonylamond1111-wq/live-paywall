@@ -6,7 +6,6 @@ import { hasStreamStarted } from '@/lib/event';
 import { MAX_STREAM_HEIGHT } from '@/lib/constants';
 import {
   createStreamHlsConfig,
-  DESKTOP_HD_RAMP_BUFFER_SECONDS,
   getBufferedAheadSeconds,
   getEffectiveMaxHeight,
   getMaxLevelIndex,
@@ -162,7 +161,8 @@ export default function StreamPlayer({
 
     const dropQualityOnBuffer = () => {
       const now = Date.now();
-      if (now - lastQualityDropAt < 4000) return;
+      if (now - lastQualityDropAt < 10_000) return;
+      if (getBufferedAheadSeconds(video) > 1.5) return;
       lastQualityDropAt = now;
 
       onHealthChange?.('buffering');
@@ -210,25 +210,12 @@ export default function StreamPlayer({
       });
       hlsRef.current = hls;
 
-      const tryUnlockHd = () => {
-        if (!hls || qualityRampedRef.current || isMobileDevice()) return;
-        if (getEffectiveMaxHeight() < 1080) return;
-        if (getBufferedAheadSeconds(video) < DESKTOP_HD_RAMP_BUFFER_SECONDS) return;
-
-        hls.autoLevelCapping = getMaxLevelIndex(hls.levels, getEffectiveMaxHeight());
-        hls.currentLevel = -1;
-        qualityRampedRef.current = true;
-      };
-
       hls.loadSource(src);
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
         const maxHeight = getEffectiveMaxHeight();
         const fullMaxLevel = getMaxLevelIndex(data.levels, maxHeight);
-        const startCapLevel = isMobileDevice()
-          ? fullMaxLevel
-          : getMaxLevelIndex(data.levels, Math.min(720, maxHeight));
         const qualityLevels: QualityLevel[] = data.levels
           .map((level, index) => ({
             index,
@@ -239,9 +226,10 @@ export default function StreamPlayer({
           .map(({ index, label }) => ({ index, label }));
 
         setLevels(qualityLevels);
-        hls!.autoLevelCapping = startCapLevel;
+        hls!.autoLevelCapping = fullMaxLevel;
         hls!.startLevel = getSafeStartLevel(data.levels);
-        setCurrentLevel(hls?.currentLevel ?? -1);
+        qualityRampedRef.current = true;
+        setCurrentLevel(hls?.startLevel ?? -1);
         hls?.startLoad(-1);
         markLive();
         startPlayback();
@@ -250,7 +238,6 @@ export default function StreamPlayer({
 
       hls.on(Hls.Events.FRAG_BUFFERED, () => {
         syncToLiveEdge();
-        tryUnlockHd();
       });
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {

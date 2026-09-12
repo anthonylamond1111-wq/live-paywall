@@ -16,11 +16,24 @@ type AdminStats = {
   purchasesLastHour: number;
   purchasesToday: number;
   notifySignups: number;
+  revenueTotalPence: number;
+  revenueTodayPence: number;
+  revenueLastHourPence: number;
+  stripeFeesPence: number;
+  fixedCostsPence: number;
+  profitPence: number;
   activeWindowSeconds: number;
   updatedAt: string;
   gaConfigured: boolean;
   gaMeasurementId: string | null;
 };
+
+function formatGbp(pence: number) {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+  }).format(pence / 100);
+}
 
 async function fetchStats(session: Session): Promise<AdminStats | null> {
   const res = await fetch('/api/admin/stats', {
@@ -236,7 +249,22 @@ export default function AdminPage() {
                 <div className="grid gap-4 sm:grid-cols-3">
                   <StatCard label="Sales today" value={stats.purchasesToday} />
                   <StatCard label="Sales last hour" value={stats.purchasesLastHour} />
-                  <StatCard label="Total sales" value={stats.purchasesTotal} />
+                  <StatCard label="Total sales (event)" value={stats.purchasesTotal} />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <MoneyStatCard
+                    label="Revenue tonight"
+                    value={formatGbp(stats.revenueTotalPence)}
+                    hint={`Today: ${formatGbp(stats.revenueTodayPence)} · Last hour: ${formatGbp(stats.revenueLastHourPence)}`}
+                    highlight
+                  />
+                  <MoneyStatCard
+                    label="Est. profit"
+                    value={formatGbp(stats.profitPence)}
+                    hint={`After Stripe fees (${formatGbp(stats.stripeFeesPence)})${stats.fixedCostsPence > 0 ? ` and fixed costs (${formatGbp(stats.fixedCostsPence)})` : ''}`}
+                    highlight
+                  />
                 </div>
 
                 <StatCard label="Notify-me signups" value={stats.notifySignups} />
@@ -366,6 +394,34 @@ function StatCard({
     >
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">{label}</p>
       <p className="mt-3 font-mono text-4xl font-bold tabular-nums text-white sm:text-5xl">
+        {value}
+      </p>
+      {hint && <p className="mt-2 text-xs text-gray-600">{hint}</p>}
+    </div>
+  );
+}
+
+function MoneyStatCard({
+  label,
+  value,
+  hint,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-5 sm:p-6 ${
+        highlight
+          ? 'border-green-500/30 bg-gradient-to-b from-green-950/30 to-zinc-950'
+          : 'border-zinc-800 bg-zinc-900/50'
+      }`}
+    >
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">{label}</p>
+      <p className="mt-3 font-mono text-3xl font-bold tabular-nums text-white sm:text-4xl">
         {value}
       </p>
       {hint && <p className="mt-2 text-xs text-gray-600">{hint}</p>}

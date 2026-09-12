@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { getEventRevenue } from '@/lib/admin-revenue';
 import { isSiteAdmin } from '@/lib/site-admin';
 import { ACTIVE_VISITOR_SECONDS } from '@/lib/visitor-session';
 import { GA_MEASUREMENT_ID } from '@/lib/constants';
+import { getStreamAccessStartedAtIso } from '@/lib/stream-access';
 import { getUserFromRequest, getServiceSupabase } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +25,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Analytics not configured' }, { status: 503 });
   }
 
+  const eventStartedAt = getStreamAccessStartedAtIso();
   const since = new Date(Date.now() - ACTIVE_VISITOR_SECONDS * 1000).toISOString();
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const todayStart = new Date();
@@ -33,7 +36,7 @@ export async function GET(request: Request) {
     .delete()
     .lt('last_seen', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-  const [siteVisitors, streamViewers, purchasesTotal, purchasesHour, purchasesToday, notifyTotal] =
+  const [siteVisitors, streamViewers, purchasesTotal, purchasesHour, purchasesToday, notifyTotal, revenue] =
     await Promise.all([
       supabase
         .from('site_visitor_sessions')
@@ -45,7 +48,10 @@ export async function GET(request: Request) {
         .select('*', { count: 'exact', head: true })
         .eq('view', 'stream')
         .gte('last_seen', since),
-      supabase.from('purchases').select('*', { count: 'exact', head: true }),
+      supabase
+        .from('purchases')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', eventStartedAt),
       supabase
         .from('purchases')
         .select('*', { count: 'exact', head: true })
@@ -55,6 +61,10 @@ export async function GET(request: Request) {
         .select('*', { count: 'exact', head: true })
         .gte('created_at', todayStart.toISOString()),
       supabase.from('notify_signups').select('*', { count: 'exact', head: true }),
+      getEventRevenue().catch((error) => {
+        console.error('Admin revenue error:', error);
+        return null;
+      }),
     ]);
 
   const gaId = GA_MEASUREMENT_ID;
@@ -67,6 +77,12 @@ export async function GET(request: Request) {
     purchasesLastHour: purchasesHour.count ?? 0,
     purchasesToday: purchasesToday.count ?? 0,
     notifySignups: notifyTotal.count ?? 0,
+    revenueTotalPence: revenue?.revenueTotalPence ?? 0,
+    revenueTodayPence: revenue?.revenueTodayPence ?? 0,
+    revenueLastHourPence: revenue?.revenueLastHourPence ?? 0,
+    stripeFeesPence: revenue?.stripeFeesPence ?? 0,
+    fixedCostsPence: revenue?.fixedCostsPence ?? 0,
+    profitPence: revenue?.profitPence ?? 0,
     updatedAt: new Date().toISOString(),
     gaConfigured: Boolean(gaId),
     gaMeasurementId: gaId ? `${gaId.slice(0, 2)}…${gaId.slice(-4)}` : null,

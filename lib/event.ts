@@ -21,7 +21,7 @@ export type FAQItem = {
   a: string;
 };
 
-const DEFAULT_EVENT_START = '2026-09-13T03:00:00.000Z';
+const DEFAULT_EVENT_START = '2026-09-12T23:00:00.000Z';
 const configuredEventStart =
   process.env.NEXT_PUBLIC_EVENT_START_ISO ?? DEFAULT_EVENT_START;
 
@@ -34,7 +34,7 @@ export const EVENT = {
   streamStart: configuredEventStart.includes('2026-08-15')
     ? DEFAULT_EVENT_START
     : configuredEventStart,
-  streamStartLabel: 'Sunday 4:00 AM (UK)',
+  streamStartLabel: 'Sunday 12:00 AM (UK)',
   replayMessage:
     'Your access includes the full live event. Replay available for 24 hours after the broadcast ends.',
   liveUpdateMessage: process.env.NEXT_PUBLIC_LIVE_UPDATE_MESSAGE ?? '',

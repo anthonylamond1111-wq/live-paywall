@@ -194,18 +194,18 @@ export default function UFCAccess() {
           }
         }
 
-        if (verified.paid) {
-          window.history.replaceState({}, '', window.location.pathname);
-          await enterStreamIfPaid(activeSession, true);
-          return;
-        }
-
         if (verified.paid && verified.needsPassword) {
           if (verified.email) setEmail(verified.email);
           setAuthMode('login');
           setMessage('Payment successful! Log in with your account to watch live.');
           setView('auth');
           window.history.replaceState({}, '', window.location.pathname);
+          return;
+        }
+
+        if (verified.paid) {
+          window.history.replaceState({}, '', window.location.pathname);
+          await enterStreamIfPaid(activeSession, true);
           return;
         }
 

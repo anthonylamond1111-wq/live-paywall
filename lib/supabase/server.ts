@@ -16,6 +16,8 @@ export type GetUserOptions = {
   skipSessionCheck?: boolean;
 };
 
+export type AccessUser = Pick<User, 'id' | 'email'>;
+
 export function getServiceSupabase(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -78,7 +80,7 @@ export async function isActiveAuthSession(
 
   if (error) {
     console.error('Session check error:', error.message);
-    return true;
+    return false;
   }
 
   if (!data) return true;
@@ -199,7 +201,7 @@ export function stripeSessionMatchesUser(
     customer_email?: string | null;
     customer_details?: { email?: string | null } | null;
   },
-  user: User
+  user: AccessUser
 ) {
   const sessionUserId = session.metadata?.user_id ?? session.client_reference_id;
   if (sessionUserId) {
@@ -216,7 +218,7 @@ function isPaidCheckoutSession(session: Stripe.Checkout.Session) {
 }
 
 export async function findPaidStripeSessionForUser(
-  user: User
+  user: AccessUser
 ): Promise<Stripe.Checkout.Session | null> {
   const stripe = getStripe();
   const since = getStreamAccessStartedAtUnix();
@@ -245,7 +247,7 @@ export async function findPaidStripeSessionForUser(
   return null;
 }
 
-export async function syncStripePurchasesForUser(user: User): Promise<boolean> {
+export async function syncStripePurchasesForUser(user: AccessUser): Promise<boolean> {
   const checkoutSession = await findPaidStripeSessionForUser(user);
   if (!checkoutSession) return false;
 
@@ -253,7 +255,7 @@ export async function syncStripePurchasesForUser(user: User): Promise<boolean> {
 }
 
 export async function resolveUserAccess(
-  user: User,
+  user: AccessUser,
   accessToken?: string | null
 ): Promise<boolean> {
   if (hasFreeAccess(user.email)) {

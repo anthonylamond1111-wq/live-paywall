@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getHlsPlaylistPath } from '@/lib/hls-access';
 import { getStreamUrl } from '@/lib/constants';
-
-export const dynamic = 'force-dynamic';
+import { attachStreamAccessCookies } from '@/lib/stream-grant-cookie';
 import {
   getTokenFromRequest,
   getUserFromRequest,
   resolveUserAccess,
 } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
 
 function getRequestOrigin(request: Request): string {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -37,5 +38,7 @@ export async function GET(request: Request) {
   }
 
   const origin = getRequestOrigin(request);
-  return NextResponse.json({ url: `${origin}${getHlsPlaylistPath()}` });
+  const response = NextResponse.json({ url: `${origin}${getHlsPlaylistPath()}` });
+  await attachStreamAccessCookies(response, user);
+  return response;
 }

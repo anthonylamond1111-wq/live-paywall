@@ -21,7 +21,10 @@ set search_path = public
 stable
 as $$
   select exists (
-    select 1 from public.purchases where user_id = auth.uid()
+    select 1
+    from public.purchases
+    where user_id = auth.uid()
+      and created_at >= '2026-09-12T00:00:00.000Z'::timestamptz
   );
 $$;
 

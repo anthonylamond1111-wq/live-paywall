@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { getStripe } from '@/lib/stripe';
 import { accessCookieOptions } from '@/lib/access-cookie';
+import { attachStreamAccessCookies } from '@/lib/stream-grant-cookie';
 import { isCurrentStreamPayment } from '@/lib/stream-access';
 import {
   ensureUserForCheckout,
@@ -73,9 +73,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Could not save purchase' }, { status: 500 });
     }
 
-    const cookieStore = await cookies();
-    cookieStore.set(accessCookieOptions(session.id));
-
     if (!user) {
       const email =
         sessionEmail(session) ?? (await getUserEmailById(userId));
@@ -100,16 +97,21 @@ export async function POST(request: Request) {
         }
       }
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         paid: true,
         access_token: minted.access_token,
         refresh_token: minted.refresh_token,
       });
+      response.cookies.set(accessCookieOptions(session.id));
+      await attachStreamAccessCookies(response, { id: userId, email: email ?? undefined });
+      return response;
     }
 
     const paid = await resolveUserAccess(user, token);
-
-    return NextResponse.json({ paid });
+    const response = NextResponse.json({ paid });
+    response.cookies.set(accessCookieOptions(session.id));
+    await attachStreamAccessCookies(response, user);
+    return response;
   } catch (error) {
     console.error('Verify error:', error);
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { hasPaidAccess } from '@/lib/access-cookie';
+import { attachStreamAccessCookies } from '@/lib/stream-grant-cookie';
 import {
   getTokenFromRequest,
   getUserFromRequest,
@@ -11,7 +12,11 @@ export async function GET(request: Request) {
   if (user) {
     const token = getTokenFromRequest(request);
     const paid = await resolveUserAccess(user, token);
-    return NextResponse.json({ paid });
+    const response = NextResponse.json({ paid });
+    if (paid) {
+      await attachStreamAccessCookies(response, user);
+    }
+    return response;
   }
 
   if (await hasPaidAccess()) {

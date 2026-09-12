@@ -1,8 +1,8 @@
 export const SITE_LOCK_COOKIE = 'ufc_site_unlock';
 
-/** Emergency site lock — disabled for Garcia vs Benn. Set SITE_LOCK_ENABLED=true to turn back on. */
+/** Emergency site lock — set SITE_LOCK_ENABLED=true on Railway to enable. */
 export function isSiteLockEnabled(): boolean {
-  return false;
+  return process.env.SITE_LOCK_ENABLED === 'true';
 }
 
 /** Change via SITE_LOCK_PASSWORD in Railway. */

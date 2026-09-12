@@ -1,6 +1,9 @@
 import { getStreamUrl } from '@/lib/constants';
-import { hasPaidAccess } from '@/lib/access-cookie';
 import { canAccessPreviewStream } from '@/lib/preview-access';
+import {
+  hasStreamGrantFromCookieHeader,
+  hasStripeAccessFromCookieHeader,
+} from '@/lib/stream-grant-cookie';
 import {
   getTokenFromRequest,
   getUserFromRequest,
@@ -58,7 +61,11 @@ export async function canProxyStream(request: Request, targetUrl: string): Promi
     return true;
   }
 
-  if (await hasPaidAccess()) {
+  if (hasStreamGrantFromCookieHeader(cookieHeader)) {
+    return true;
+  }
+
+  if (await hasStripeAccessFromCookieHeader(cookieHeader)) {
     return true;
   }
 

@@ -96,6 +96,14 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
   const isFullscreen = playerMode === 'fullscreen';
   const isTheatre = playerMode === 'theatre';
 
+  const handleFullscreenToggle = () => {
+    if (isFullscreen) {
+      void handleExitFullscreen();
+    } else {
+      void handleEnterFullscreen();
+    }
+  };
+
   const statusLabel = isLive
     ? 'Live broadcast in progress'
     : isBeforeStart
@@ -178,7 +186,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
             onClick={handleExitFullscreen}
             className="pointer-events-auto rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/10 sm:text-sm"
           >
-            Exit
+            Minimize
           </button>
         </div>
       )}
@@ -205,7 +213,8 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
             showCastButton
             onLiveChange={setIsLive}
             onHealthChange={setHealth}
-            onRequestFullscreen={isFullscreen ? undefined : handleEnterFullscreen}
+            isFullscreen={isFullscreen}
+            onFullscreenToggle={handleFullscreenToggle}
           />
           {!isLive && (
             <div

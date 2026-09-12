@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import StreamPlayer from '@/components/StreamPlayer';
+import StreamPlayer, { useStreamFullscreen } from '@/components/StreamPlayer';
 import StreamConnecting from '@/components/StreamConnecting';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import { formatPreviewDuration, PREVIEW_SECONDS } from '@/lib/constants';
@@ -35,7 +35,12 @@ export default function PreviewStream({
   const [isLive, setIsLive] = useState(false);
   const [countdownActive, setCountdownActive] = useState(false);
   const [connectTimedOut, setConnectTimedOut] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const previewStartedRef = useRef(false);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { enter: enterNativeFullscreen, exit: exitNativeFullscreen } =
+    useStreamFullscreen(fullscreenRef, videoRef);
 
   const startPreviewTimer = useCallback(async () => {
     if (previewStartedRef.current) return;
@@ -175,8 +180,66 @@ export default function PreviewStream({
   const urgent = remaining <= 15 && !expired && countdownActive;
   const previewActive = isLive && !expired && countdownActive;
 
+  const handleEnterFullscreen = async () => {
+    const preferVideo =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 768px)').matches;
+    const entered = await enterNativeFullscreen(preferVideo);
+    if (!entered || !preferVideo) {
+      setIsFullscreen(true);
+    }
+  };
+
+  const handleExitFullscreen = async () => {
+    await exitNativeFullscreen();
+    setIsFullscreen(false);
+  };
+
+  const handleFullscreenToggle = () => {
+    if (isFullscreen) {
+      void handleExitFullscreen();
+    } else {
+      void handleEnterFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    document.body.style.overflow = 'hidden';
+
+    const onFullscreenChange = () => {
+      const webkitVideo = videoRef.current as HTMLVideoElement & {
+        webkitDisplayingFullscreen?: boolean;
+      } | null;
+      if (!document.fullscreenElement && !webkitVideo?.webkitDisplayingFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    const video = videoRef.current;
+    video?.addEventListener('webkitbeginfullscreen', onFullscreenChange);
+    video?.addEventListener('webkitendfullscreen', onFullscreenChange);
+
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      video?.removeEventListener('webkitbeginfullscreen', onFullscreenChange);
+      video?.removeEventListener('webkitendfullscreen', onFullscreenChange);
+    };
+  }, [isFullscreen]);
+
   return (
-    <div className="group relative">
+    <div
+      ref={fullscreenRef}
+      className={
+        isFullscreen
+          ? 'fixed inset-0 z-[100] flex h-[100dvh] w-full flex-col bg-black'
+          : 'group relative'
+      }
+    >
+      {!isFullscreen && (
       <div className="mb-3 flex items-center justify-between px-1 sm:mb-4 sm:px-0">
         <div>
           <div className="flex items-center gap-2">
@@ -203,10 +266,35 @@ export default function PreviewStream({
           </div>
         )}
       </div>
+      )}
 
-      <div className="preview-frame relative overflow-hidden rounded-2xl sm:rounded-3xl">
-        <div className="preview-frame-inner">
-        <div className="relative bg-black">
+      {isFullscreen && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-[max(0.75rem,env(safe-area-inset-top))_1rem_2rem]">
+          <div className="pointer-events-auto rounded-md bg-black/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-200 ring-1 ring-white/10 backdrop-blur-sm">
+            Free preview
+            {previewActive && (
+              <span className="ml-2 font-mono text-red-300">{formatCountdown(remaining)} left</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleExitFullscreen}
+            className="pointer-events-auto rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/10 sm:text-sm"
+          >
+            Minimize
+          </button>
+        </div>
+      )}
+
+      <div
+        className={
+          isFullscreen
+            ? 'relative min-h-0 flex-1'
+            : 'preview-frame relative overflow-hidden rounded-2xl sm:rounded-3xl'
+        }
+      >
+        <div className={isFullscreen ? 'h-full' : 'preview-frame-inner'}>
+        <div className={`relative bg-black ${isFullscreen ? 'h-full min-h-0' : ''}`}>
           {loading && (
             <div className="flex aspect-video flex-col items-center justify-center gap-4 bg-gradient-to-b from-zinc-950 to-black">
               <div className="relative">
@@ -226,9 +314,20 @@ export default function PreviewStream({
 
           {!loading && previewUrl && !expired && (
             <>
-              <StreamPlayer src={previewUrl} onLiveChange={handleLiveChange} />
+              <StreamPlayer
+                src={previewUrl}
+                fill={isFullscreen}
+                videoRef={videoRef}
+                isFullscreen={isFullscreen}
+                onFullscreenToggle={handleFullscreenToggle}
+                onLiveChange={handleLiveChange}
+              />
               {!isLive && (
-                <div className="absolute inset-0 z-10 overflow-hidden rounded-2xl sm:rounded-3xl">
+                <div
+                  className={`absolute inset-0 z-10 overflow-hidden ${
+                    isFullscreen ? 'rounded-none' : 'rounded-2xl sm:rounded-3xl'
+                  }`}
+                >
                   {connectTimedOut ? (
                     <StreamOffline
                       variant={isBeforeStart ? 'scheduled' : 'waiting'}
@@ -270,7 +369,7 @@ export default function PreviewStream({
             </div>
           )}
 
-          {previewActive && (
+          {previewActive && !isFullscreen && (
             <>
               <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-md bg-black/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-200 ring-1 ring-white/10 backdrop-blur-sm">
                 Preview only

@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isChatAdmin } from '@/lib/chat-admin';
-import {
-  getServiceSupabase,
-  getTokenFromRequest,
-  getUserFromRequest,
-} from '@/lib/supabase/server';
+import { addStaffMessage, listRecentMessages } from '@/lib/support-store';
+import { getTokenFromRequest, getUserFromRequest } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,24 +17,8 @@ export async function GET(request: Request) {
   const auth = await requireOwner(request);
   if ('error' in auth && auth.error) return auth.error;
 
-  const supabase = getServiceSupabase();
-  if (!supabase) {
-    return NextResponse.json({ error: 'Support chat not configured' }, { status: 503 });
-  }
-
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-  const { data, error } = await supabase
-    .from('support_messages')
-    .select('id, thread_id, role, body, email, created_at')
-    .gte('created_at', since)
-    .order('created_at', { ascending: true })
-    .limit(500);
-
-  if (error) {
-    console.error('Support admin load error:', error.message);
-    return NextResponse.json({ error: 'Could not load support inbox' }, { status: 500 });
-  }
+  const data = listRecentMessages(since);
 
   const threads = new Map<
     string,
@@ -55,7 +36,7 @@ export async function GET(request: Request) {
     }
   >();
 
-  for (const row of data ?? []) {
+  for (const row of data) {
     const existing = threads.get(row.thread_id);
     const entry = {
       id: row.id,
@@ -92,11 +73,6 @@ export async function POST(request: Request) {
   const auth = await requireOwner(request);
   if ('error' in auth && auth.error) return auth.error;
 
-  const supabase = getServiceSupabase();
-  if (!supabase) {
-    return NextResponse.json({ error: 'Support chat not configured' }, { status: 503 });
-  }
-
   const payload = (await request.json().catch(() => ({}))) as {
     threadId?: string;
     message?: string;
@@ -109,20 +85,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid reply' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
-    .from('support_messages')
-    .insert({
-      thread_id: threadId,
-      role: 'staff',
-      body: message,
-    })
-    .select('id, role, body, created_at')
-    .single();
-
-  if (error) {
-    console.error('Support admin reply error:', error.message);
-    return NextResponse.json({ error: 'Could not send reply' }, { status: 500 });
-  }
-
+  const data = addStaffMessage({ threadId, body: message });
   return NextResponse.json({ message: data });
 }

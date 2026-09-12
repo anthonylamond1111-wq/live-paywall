@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import AdminSupportInbox from '@/components/AdminSupportInbox';
 import { OWNER_EMAIL } from '@/lib/site-admin';
 
-type AdminTab = 'live' | 'analytics';
+type AdminTab = 'live' | 'support' | 'analytics';
 
 type AdminStats = {
   activeOnSite: number;
@@ -201,6 +202,9 @@ export default function AdminPage() {
               <TabButton active={tab === 'live'} onClick={() => setTab('live')}>
                 Live now
               </TabButton>
+              <TabButton active={tab === 'support'} onClick={() => setTab('support')}>
+                Support inbox
+              </TabButton>
               <TabButton active={tab === 'analytics'} onClick={() => setTab('analytics')}>
                 Google Analytics
               </TabButton>
@@ -243,6 +247,8 @@ export default function AdminPage() {
                 </p>
               </div>
             )}
+
+            {tab === 'support' && <AdminSupportInbox session={session} />}
 
             {tab === 'analytics' && (
               <div className="space-y-4">

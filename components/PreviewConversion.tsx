@@ -2,6 +2,7 @@
 
 import { CHECKOUT_LABEL } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
+import DiscountCodeField from '@/components/DiscountCodeField';
 import PaymentBadges from '@/components/PaymentBadges';
 import ShareButton from '@/components/ShareButton';
 import SocialProof from '@/components/SocialProof';
@@ -13,6 +14,8 @@ type PreviewConversionProps = {
   userEmail?: string | null;
   busy?: boolean;
   message?: string;
+  promotionCode?: string;
+  onPromotionCodeChange?: (value: string) => void;
 };
 
 const TRUST_POINTS = [
@@ -29,6 +32,8 @@ export default function PreviewConversion({
   userEmail,
   busy = false,
   message,
+  promotionCode = '',
+  onPromotionCodeChange,
 }: PreviewConversionProps) {
   return (
     <div
@@ -69,6 +74,14 @@ export default function PreviewConversion({
         <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-300">
           {message}
         </p>
+      )}
+
+      {isLoggedIn && onPromotionCodeChange && (
+        <DiscountCodeField
+          value={promotionCode}
+          onChange={onPromotionCodeChange}
+          disabled={busy}
+        />
       )}
 
       <button

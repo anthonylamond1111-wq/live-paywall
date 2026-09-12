@@ -98,6 +98,7 @@ export default function UFCAccess() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [promotionCode, setPromotionCode] = useState('');
   const [purchaseJustCompleted, setPurchaseJustCompleted] = useState(false);
   const [previewExpired, setPreviewExpired] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -364,7 +365,9 @@ export default function UFCAccess() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          promotionCode: promotionCode.trim() || undefined,
+        }),
       });
       const data = await res.json();
 
@@ -389,7 +392,7 @@ export default function UFCAccess() {
     } finally {
       setBusy(false);
     }
-  }, [session, checkAccess]);
+  }, [session, checkAccess, promotionCode]);
 
   const handleUnlock = useCallback(() => {
     void handleCheckout();
@@ -631,6 +634,8 @@ export default function UFCAccess() {
             onUnlock={handleUnlock}
             onPreviewExpired={handlePreviewExpired}
             onPreviewLiveChange={setPreviewLive}
+            promotionCode={promotionCode}
+            onPromotionCodeChange={setPromotionCode}
           />
         )}
 
@@ -650,12 +655,16 @@ export default function UFCAccess() {
               userEmail={session?.user.email}
               busy={busy}
               message={message}
+              promotionCode={promotionCode}
+              onPromotionCodeChange={setPromotionCode}
               onUnlock={handleUnlock}
             />
             <PaywallCard
               email={session?.user.email}
               message={message}
               busy={busy}
+              promotionCode={promotionCode}
+              onPromotionCodeChange={setPromotionCode}
               onCheckout={handleCheckout}
             />
             <FAQ />

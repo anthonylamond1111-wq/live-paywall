@@ -6,6 +6,7 @@ import {
   STRIPE_WALLET_OPTIONS,
 } from '@/lib/stripe-checkout';
 import { getStripe } from '@/lib/stripe';
+import { resolvePromotionCodeId } from '@/lib/stripe-promo';
 import {
   getTokenFromRequest,
   getUserFromRequest,
@@ -98,6 +99,22 @@ export async function POST(request: Request) {
       );
     }
 
+    const payload = (await request.json().catch(() => ({}))) as {
+      promotionCode?: string;
+    };
+    const promotionCodeInput = payload.promotionCode?.trim() ?? '';
+
+    let promotionCodeId: string | null = null;
+    if (promotionCodeInput) {
+      promotionCodeId = await resolvePromotionCodeId(promotionCodeInput);
+      if (!promotionCodeId) {
+        return NextResponse.json(
+          { error: 'That discount code is invalid or expired.' },
+          { status: 400 }
+        );
+      }
+    }
+
     const priceId = await resolvePriceId();
     if (!priceId) {
       return NextResponse.json(
@@ -120,8 +137,14 @@ export async function POST(request: Request) {
       wallet_options: STRIPE_WALLET_OPTIONS,
       customer_email: user.email ?? undefined,
       client_reference_id: user.id,
-      metadata: { user_id: user.id },
+      metadata: {
+        user_id: user.id,
+        ...(promotionCodeInput ? { promotion_code: promotionCodeInput } : {}),
+      },
       line_items: [{ quantity: 1, price: priceId }],
+      ...(promotionCodeId
+        ? { discounts: [{ promotion_code: promotionCodeId }] }
+        : { allow_promotion_codes: true }),
       branding_settings: STRIPE_CHECKOUT_BRANDING,
       custom_text: STRIPE_CHECKOUT_CUSTOM_TEXT,
       success_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}`,

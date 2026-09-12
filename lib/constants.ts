@@ -1,12 +1,16 @@
-/** HLS source — new Cloudflare Stream account. Override with STREAM_URL in Railway. */
+/** HLS source — Cloudflare Stream account. Override with STREAM_URL in Railway. */
 const DEFAULT_STREAM_URL =
-  'https://customer-q44h5snfqbxzias7.cloudflarestream.com/d1cf1e4008d8c121f8f1ae2fa4f89bd7/manifest/video.m3u8';
+  'https://customer-73sqkglr4jzrnjf4.cloudflarestream.com/k7e4c2b36fe4afecafc1469f1d3e4b20c/manifest/video.m3u8';
+
+const LEGACY_STREAM_HOSTS = [
+  'customer-3gbpbuevsi4kojvq',
+  'customer-q44h5snfqbxzias7',
+];
 
 export function getStreamUrl(): string {
   const configured = process.env.STREAM_URL ?? DEFAULT_STREAM_URL;
 
-  // Ignore the old Cloudflare account playback URL after the switch.
-  if (configured.includes('customer-3gbpbuevsi4kojvq')) {
+  if (LEGACY_STREAM_HOSTS.some((host) => configured.includes(host))) {
     return DEFAULT_STREAM_URL;
   }
 

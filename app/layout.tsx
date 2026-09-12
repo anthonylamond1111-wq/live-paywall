@@ -6,7 +6,7 @@ import DiscordHelpLink from '@/components/DiscordHelpLink';
 import IntroSoundPreloader from '@/components/IntroSoundPreloader';
 import SiteVisitorHeartbeat from '@/components/SiteVisitorHeartbeat';
 import { SITE_NAME } from '@/lib/brand';
-import { INTRO_SOUND_URL } from '@/lib/constants';
+import { formatPreviewDuration, INTRO_SOUND_URL } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
 import './globals.css';
 
@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.ufcaccess.co.uk';
-const ogDescription = `${EVENT.number} — ${EVENT.fighter1Stats.name} vs ${EVENT.fighter2Stats.name}. Watch 60 seconds free, then £2.50 for full HD live stream + chat. Works on phone & TV.`;
+const ogDescription = `${EVENT.number} — ${EVENT.fighter1Stats.name} vs ${EVENT.fighter2Stats.name}. Watch ${formatPreviewDuration()} preview free, then £2.50 for full HD live stream + chat. Works on phone & TV.`;
 
 export const metadata: Metadata = {
   title: `${SITE_NAME} — ${EVENT.number} Live Stream`,
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
   },
   openGraph: {
-    title: `${EVENT.number} — Free 60 Sec Preview | ${SITE_NAME}`,
+    title: `${EVENT.number} — Free ${formatPreviewDuration(true)} Preview | ${SITE_NAME}`,
     description: ogDescription,
     url: siteUrl,
     siteName: SITE_NAME,

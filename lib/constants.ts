@@ -20,7 +20,15 @@ export function getStreamUrl(): string {
 /** Browser-facing URL — proxied through our API for reliable HLS playback */
 export const PLAYER_STREAM_URL = '/api/hls/playlist';
 
-export const PREVIEW_SECONDS = 60;
+export const PREVIEW_SECONDS = 180;
+
+export function formatPreviewDuration(short = false): string {
+  if (PREVIEW_SECONDS >= 60 && PREVIEW_SECONDS % 60 === 0) {
+    const mins = PREVIEW_SECONDS / 60;
+    return short ? `${mins} min` : `${mins}-minute`;
+  }
+  return short ? `${PREVIEW_SECONDS} sec` : `${PREVIEW_SECONDS}-second`;
+}
 
 export const CHECKOUT_LABEL =
   process.env.NEXT_PUBLIC_CHECKOUT_LABEL ?? 'Pay £2.50 to Join Live';

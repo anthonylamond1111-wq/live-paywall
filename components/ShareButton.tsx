@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { SITE_NAME } from '@/lib/brand';
+import { formatPreviewDuration } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
@@ -17,7 +18,7 @@ export default function ShareButton({ variant = 'default', className = '' }: Sha
     const url = EVENT.siteUrl;
     const text =
       variant === 'promo'
-        ? `${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}. 60 sec free preview, then £2.50 for full HD + live chat.`
+        ? `${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}. ${formatPreviewDuration(true)} free preview, then £2.50 for full HD + live chat.`
         : `${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}. Watch live on ${SITE_NAME}.`;
 
     trackAnalytics(AnalyticsEvents.SHARE, { variant });

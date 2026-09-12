@@ -1,6 +1,7 @@
 'use client';
 
 import { SITE_NAME } from '@/lib/brand';
+import { formatPreviewDuration } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
 import JourneyProgress from '@/components/JourneyProgress';
 
@@ -29,7 +30,7 @@ export default function FightNightLanding({
               {EVENT.number} • {EVENT.tagline}
             </p>
             <p className="mt-2 text-sm text-gray-400">
-              Free 60-second preview below — then unlock the full live stream
+              Free {formatPreviewDuration()} preview below — then unlock the full live stream
             </p>
           </div>
         </div>

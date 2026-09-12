@@ -11,6 +11,7 @@ import PreviewConversion from '@/components/PreviewConversion';
 import PreviewStream from '@/components/PreviewStream';
 import ShareButton from '@/components/ShareButton';
 import StickyUnlockCta from '@/components/StickyUnlockCta';
+import { formatPreviewDuration } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
@@ -88,7 +89,7 @@ export default function LandingFunnel({
         <EventCountdown />
 
         <p className="text-center text-sm text-gray-400">
-          Free 60-second preview — create an account, then pay once to watch live
+          Free {formatPreviewDuration()} preview — create an account, then pay once to watch live
         </p>
         <div className="flex justify-center">
           <ShareButton

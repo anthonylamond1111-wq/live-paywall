@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import StreamPlayer from '@/components/StreamPlayer';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
-import { PREVIEW_SECONDS } from '@/lib/constants';
+import { formatPreviewDuration, PREVIEW_SECONDS } from '@/lib/constants';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
 const PREVIEW_START_KEY = 'ufc_preview_started_at';
@@ -175,7 +175,7 @@ export default function PreviewStream({
           </div>
           <p className="mt-1 text-sm text-gray-400">
             {previewActive
-              ? '60 seconds free — see the live stream for yourself'
+              ? `${formatPreviewDuration(true)} free — see the live stream for yourself`
               : 'Free preview starts when the broadcast goes live'}
           </p>
         </div>

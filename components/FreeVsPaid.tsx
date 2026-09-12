@@ -1,6 +1,8 @@
+import { formatPreviewDuration } from '@/lib/constants';
+
 export default function FreeVsPaid() {
   const rows = [
-    { feature: 'Watch time', free: '60 sec preview', paid: 'Full event' },
+    { feature: 'Watch time', free: `${formatPreviewDuration(true)} preview`, paid: 'Full event' },
     { feature: 'Video quality', free: 'Preview only', paid: 'Full HD' },
     { feature: 'Live chat', free: '—', paid: '✓' },
     { feature: 'All devices', free: '—', paid: '✓' },

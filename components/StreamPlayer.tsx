@@ -21,6 +21,8 @@ type QualityLevel = {
   label: string;
 };
 
+const CONNECT_GRACE_MS = 15_000;
+
 type StreamPlayerProps = {
   src: string;
   fill?: boolean;
@@ -58,6 +60,7 @@ export default function StreamPlayer({
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasLiveRef = useRef(false);
   const qualityRampedRef = useRef(false);
+  const connectStartedAtRef = useRef(0);
 
   const [error, setError] = useState('');
   const [errorTitle, setErrorTitle] = useState('Stream unavailable');
@@ -143,6 +146,7 @@ export default function StreamPlayer({
     const video = videoRef.current;
     if (!video || !src) return;
 
+    connectStartedAtRef.current = Date.now();
     setError('');
     setErrorTitle('Stream unavailable');
     onLiveChange?.(false);
@@ -237,6 +241,7 @@ export default function StreamPlayer({
         hls!.startLevel = getSafeStartLevel(data.levels);
         setCurrentLevel(hls?.currentLevel ?? -1);
         hls?.startLoad(-1);
+        markLive();
         startPlayback();
         setReconnecting(false);
       });
@@ -259,6 +264,17 @@ export default function StreamPlayer({
         if (!data.fatal) return;
 
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          if (
+            !wasLiveRef.current &&
+            Date.now() - connectStartedAtRef.current < CONNECT_GRACE_MS
+          ) {
+            window.setTimeout(() => {
+              hls?.startLoad(-1);
+              setReconnecting(true);
+            }, 800);
+            return;
+          }
+
           showStreamError(
             wasLiveRef.current
               ? 'Connection lost'
@@ -303,6 +319,7 @@ export default function StreamPlayer({
       video.crossOrigin = 'use-credentials';
       video.src = src;
       const onNativeMetadata = () => {
+        markLive();
         startPlayback();
         syncToLiveEdge();
         setReconnecting(false);

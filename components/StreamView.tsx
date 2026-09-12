@@ -5,6 +5,7 @@ import type { Session } from '@supabase/supabase-js';
 import StreamPlayer, { useStreamFullscreen } from '@/components/StreamPlayer';
 import LiveChat from '@/components/LiveChat';
 import FightInfo from '@/components/FightInfo';
+import StreamConnecting from '@/components/StreamConnecting';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import BrandLogo from '@/components/BrandLogo';
 import ViewerCount from '@/components/ViewerCount';
@@ -29,6 +30,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
   const [viewerCount, setViewerCount] = useState(1);
   const [isLive, setIsLive] = useState(false);
   const [health, setHealth] = useState<StreamHealthStatus>('offline');
+  const [connectTimedOut, setConnectTimedOut] = useState(false);
   const { isBeforeStart } = useStreamSchedule();
   const fullscreenRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -53,6 +55,16 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
   const toggleTheatre = () => {
     setPlayerMode((m) => (m === 'theatre' ? 'normal' : 'theatre'));
   };
+
+  useEffect(() => {
+    if (isLive) {
+      setConnectTimedOut(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => setConnectTimedOut(true), 20_000);
+    return () => window.clearTimeout(timer);
+  }, [isLive]);
 
   useEffect(() => {
     if (playerMode !== 'fullscreen') return;
@@ -201,10 +213,14 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
                 isFullscreen ? 'rounded-none' : 'rounded-2xl sm:rounded-3xl'
               }`}
             >
-              <StreamOffline
-                variant={isBeforeStart ? 'scheduled' : 'waiting'}
-                fill={isFullscreen}
-              />
+              {connectTimedOut ? (
+                <StreamOffline
+                  variant={isBeforeStart ? 'scheduled' : 'waiting'}
+                  fill={isFullscreen}
+                />
+              ) : (
+                <StreamConnecting fill={isFullscreen} />
+              )}
             </div>
           )}
         </div>

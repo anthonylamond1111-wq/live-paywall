@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import StreamPlayer from '@/components/StreamPlayer';
+import StreamConnecting from '@/components/StreamConnecting';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
 import { formatPreviewDuration, PREVIEW_SECONDS } from '@/lib/constants';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
@@ -33,6 +34,7 @@ export default function PreviewStream({
   const [loadError, setLoadError] = useState('');
   const [isLive, setIsLive] = useState(false);
   const [countdownActive, setCountdownActive] = useState(false);
+  const [connectTimedOut, setConnectTimedOut] = useState(false);
   const previewStartedRef = useRef(false);
 
   const startPreviewTimer = useCallback(async () => {
@@ -141,6 +143,16 @@ export default function PreviewStream({
   const { isBeforeStart } = useStreamSchedule();
 
   useEffect(() => {
+    if (isLive || !previewUrl) {
+      setConnectTimedOut(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => setConnectTimedOut(true), 20_000);
+    return () => window.clearTimeout(timer);
+  }, [isLive, previewUrl]);
+
+  useEffect(() => {
     if (expired || !previewUrl || !countdownActive) return;
 
     const timer = window.setInterval(() => {
@@ -217,10 +229,14 @@ export default function PreviewStream({
               <StreamPlayer src={previewUrl} onLiveChange={handleLiveChange} />
               {!isLive && (
                 <div className="absolute inset-0 z-10 overflow-hidden rounded-2xl sm:rounded-3xl">
-                  <StreamOffline
-                    variant={isBeforeStart ? 'scheduled' : 'waiting'}
-                    subtitle="The free preview will be available here when the broadcast begins."
-                  />
+                  {connectTimedOut ? (
+                    <StreamOffline
+                      variant={isBeforeStart ? 'scheduled' : 'waiting'}
+                      subtitle="The free preview will be available here when the broadcast begins."
+                    />
+                  ) : (
+                    <StreamConnecting />
+                  )}
                 </div>
               )}
             </>

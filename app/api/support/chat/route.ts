@@ -13,7 +13,7 @@ function getOrCreateThreadId(existing?: string | null) {
 export async function GET() {
   const cookieStore = await cookies();
   const threadId = getOrCreateThreadId(cookieStore.get(SUPPORT_THREAD_COOKIE)?.value);
-  const data = listThreadMessages(threadId);
+  const data = await listThreadMessages(threadId);
 
   const response = NextResponse.json({ messages: data, threadId });
   response.cookies.set(supportThreadCookieOptions(threadId));
@@ -21,23 +21,28 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as {
-    message?: string;
-    email?: string;
-  };
+  try {
+    const body = (await request.json().catch(() => ({}))) as {
+      message?: string;
+      email?: string;
+    };
 
-  const message = body.message?.trim() ?? '';
-  if (message.length < 1 || message.length > 1000) {
-    return NextResponse.json({ error: 'Message must be 1–1000 characters' }, { status: 400 });
+    const message = body.message?.trim() ?? '';
+    if (message.length < 1 || message.length > 1000) {
+      return NextResponse.json({ error: 'Message must be 1–1000 characters' }, { status: 400 });
+    }
+
+    const cookieStore = await cookies();
+    const threadId = getOrCreateThreadId(cookieStore.get(SUPPORT_THREAD_COOKIE)?.value);
+    const email = body.email?.trim().slice(0, 120) || null;
+
+    const data = await addVisitorMessage({ threadId, body: message, email });
+
+    const response = NextResponse.json({ message: data });
+    response.cookies.set(supportThreadCookieOptions(threadId));
+    return response;
+  } catch (error) {
+    console.error('Support chat POST error:', error);
+    return NextResponse.json({ error: 'Could not send message' }, { status: 500 });
   }
-
-  const cookieStore = await cookies();
-  const threadId = getOrCreateThreadId(cookieStore.get(SUPPORT_THREAD_COOKIE)?.value);
-  const email = body.email?.trim().slice(0, 120) || null;
-
-  const data = addVisitorMessage({ threadId, body: message, email });
-
-  const response = NextResponse.json({ message: data });
-  response.cookies.set(supportThreadCookieOptions(threadId));
-  return response;
 }

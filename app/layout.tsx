@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Suspense } from 'react';
 import GoogleAnalytics, { GoogleAnalyticsPageView } from '@/components/GoogleAnalytics';
 import SupportChatWidget from '@/components/SupportChatWidget';
+import OwnerSupportAlerts from '@/components/OwnerSupportAlerts';
 import IntroSoundPreloader from '@/components/IntroSoundPreloader';
 import SiteVisitorHeartbeat from '@/components/SiteVisitorHeartbeat';
 import { SITE_NAME } from '@/lib/brand';
@@ -83,6 +84,7 @@ export default function RootLayout({
           <SiteVisitorHeartbeat />
         </Suspense>
         <SupportChatWidget />
+        <OwnerSupportAlerts />
         {children}
       </body>
     </html>

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { isChatAdmin } from '@/lib/chat-admin';
-import { addStaffMessage, listRecentMessages } from '@/lib/support-store';
+import {
+  addStaffMessage,
+  countWaitingThreads,
+  listAllThreads,
+} from '@/lib/support-store';
 import { getTokenFromRequest, getUserFromRequest } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -17,55 +21,15 @@ export async function GET(request: Request) {
   const auth = await requireOwner(request);
   if ('error' in auth && auth.error) return auth.error;
 
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const data = listRecentMessages(since);
+  const url = new URL(request.url);
+  const summaryOnly = url.searchParams.get('summary') === '1';
 
-  const threads = new Map<
-    string,
-    {
-      threadId: string;
-      email: string | null;
-      messages: Array<{
-        id: string;
-        role: string;
-        body: string;
-        created_at: string;
-      }>;
-      lastAt: string;
-      needsReply: boolean;
-    }
-  >();
-
-  for (const row of data) {
-    const existing = threads.get(row.thread_id);
-    const entry = {
-      id: row.id,
-      role: row.role,
-      body: row.body,
-      created_at: row.created_at,
-    };
-
-    if (!existing) {
-      threads.set(row.thread_id, {
-        threadId: row.thread_id,
-        email: row.email ?? null,
-        messages: [entry],
-        lastAt: row.created_at,
-        needsReply: row.role === 'visitor',
-      });
-      continue;
-    }
-
-    if (row.email && !existing.email) existing.email = row.email;
-    existing.messages.push(entry);
-    existing.lastAt = row.created_at;
-    existing.needsReply = row.role === 'visitor';
+  if (summaryOnly) {
+    const waiting = await countWaitingThreads();
+    return NextResponse.json({ waiting });
   }
 
-  const list = [...threads.values()].sort(
-    (a, b) => new Date(b.lastAt).getTime() - new Date(a.lastAt).getTime()
-  );
-
+  const list = await listAllThreads();
   return NextResponse.json({ threads: list });
 }
 
@@ -73,18 +37,23 @@ export async function POST(request: Request) {
   const auth = await requireOwner(request);
   if ('error' in auth && auth.error) return auth.error;
 
-  const payload = (await request.json().catch(() => ({}))) as {
-    threadId?: string;
-    message?: string;
-  };
+  try {
+    const payload = (await request.json().catch(() => ({}))) as {
+      threadId?: string;
+      message?: string;
+    };
 
-  const threadId = payload.threadId?.trim();
-  const message = payload.message?.trim() ?? '';
+    const threadId = payload.threadId?.trim();
+    const message = payload.message?.trim() ?? '';
 
-  if (!threadId || message.length < 1 || message.length > 1000) {
-    return NextResponse.json({ error: 'Invalid reply' }, { status: 400 });
+    if (!threadId || message.length < 1 || message.length > 1000) {
+      return NextResponse.json({ error: 'Invalid reply' }, { status: 400 });
+    }
+
+    const data = await addStaffMessage({ threadId, body: message });
+    return NextResponse.json({ message: data });
+  } catch (error) {
+    console.error('Support admin POST error:', error);
+    return NextResponse.json({ error: 'Could not send reply' }, { status: 500 });
   }
-
-  const data = addStaffMessage({ threadId, body: message });
-  return NextResponse.json({ message: data });
 }

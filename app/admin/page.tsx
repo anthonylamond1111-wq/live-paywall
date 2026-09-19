@@ -54,6 +54,14 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const param = new URLSearchParams(window.location.search).get('tab');
+    if (param === 'support' || param === 'analytics' || param === 'live') {
+      setTab(param);
+    }
+  }, []);
+
   const loadStats = useCallback(async (activeSession: Session) => {
     const data = await fetchStats(activeSession);
     if (!data) {

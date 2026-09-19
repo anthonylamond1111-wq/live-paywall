@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { EVENT } from '@/lib/event';
+import {
+  ensureSupportNotifyPermission,
+  showSupportNotification,
+} from '@/lib/support-notify';
 
 type SupportMessage = {
   id: string;
@@ -9,6 +13,8 @@ type SupportMessage = {
   body: string;
   created_at: string;
 };
+
+const LAST_SEEN_STAFF_KEY = 'ufc_support_last_staff_id';
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -22,7 +28,13 @@ export default function SupportChatWidget() {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [unread, setUnread] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const openRef = useRef(false);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   const loadMessages = useCallback(async () => {
     try {
@@ -32,19 +44,53 @@ export default function SupportChatWidget() {
         setError(data.error ?? 'Support chat unavailable');
         return;
       }
-      setMessages((data.messages ?? []) as SupportMessage[]);
+
+      const next = (data.messages ?? []) as SupportMessage[];
+      setMessages(next);
       setError('');
+
+      const lastStaff = [...next].reverse().find((row) => row.role === 'staff');
+      const lastSeen =
+        typeof window !== 'undefined'
+          ? sessionStorage.getItem(LAST_SEEN_STAFF_KEY)
+          : null;
+
+      if (lastStaff && lastStaff.id !== lastSeen) {
+        if (!openRef.current) {
+          setUnread((count) => Math.max(count, 1));
+          showSupportNotification({
+            title: 'Support replied',
+            body: lastStaff.body.slice(0, 120),
+            tag: `support-staff-${lastStaff.id}`,
+            onClick: () => setOpen(true),
+          });
+        } else {
+          sessionStorage.setItem(LAST_SEEN_STAFF_KEY, lastStaff.id);
+          setUnread(0);
+        }
+      }
+
+      if (openRef.current && lastStaff) {
+        sessionStorage.setItem(LAST_SEEN_STAFF_KEY, lastStaff.id);
+        setUnread(0);
+      }
     } catch {
       setError('Could not connect to support');
     }
   }, []);
 
+  // Poll while closed too — so this visitor (only) can get reply alerts.
+  useEffect(() => {
+    void loadMessages();
+    const timer = window.setInterval(() => void loadMessages(), open ? 4000 : 10000);
+    return () => window.clearInterval(timer);
+  }, [open, loadMessages]);
+
   useEffect(() => {
     if (!open) return;
     setLoading(true);
     void loadMessages().finally(() => setLoading(false));
-    const timer = window.setInterval(() => void loadMessages(), 5000);
-    return () => window.clearInterval(timer);
+    void ensureSupportNotifyPermission();
   }, [open, loadMessages]);
 
   useEffect(() => {
@@ -101,7 +147,7 @@ export default function SupportChatWidget() {
                 Live support
               </p>
               <p className="mt-0.5 text-sm font-semibold text-white">Need help tonight?</p>
-              <p className="mt-1 text-xs text-gray-500">Payment, stream, or login issues</p>
+              <p className="mt-1 text-xs text-gray-500">Payment, stream, or access issues</p>
             </div>
             <button
               type="button"
@@ -120,7 +166,7 @@ export default function SupportChatWidget() {
 
             {!loading && messages.length === 0 && !error && (
               <div className="rounded-xl border border-zinc-800 bg-black/40 px-3 py-3 text-sm text-gray-400">
-                Send a message and we&apos;ll reply here as fast as we can during the event.
+                Send a message and we&apos;ll reply here. Your chat stays saved on this device.
               </div>
             )}
 
@@ -134,9 +180,7 @@ export default function SupportChatWidget() {
                   >
                     <div
                       className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
-                        isStaff
-                          ? 'bg-zinc-800 text-gray-100'
-                          : 'bg-red-600 text-white'
+                        isStaff ? 'bg-zinc-800 text-gray-100' : 'bg-red-600 text-white'
                       }`}
                     >
                       {isStaff && (
@@ -201,8 +245,13 @@ export default function SupportChatWidget() {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="pointer-events-auto ml-auto flex items-center gap-2 rounded-full border border-red-600/50 bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-red-900/30 transition hover:bg-red-500"
+        className="pointer-events-auto relative ml-auto flex items-center gap-2 rounded-full border border-red-600/50 bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-red-900/30 transition hover:bg-red-500"
       >
+        {unread > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-red-600">
+            {unread}
+          </span>
+        )}
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -211,7 +260,7 @@ export default function SupportChatWidget() {
             d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.576 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
           />
         </svg>
-        {open ? 'Close support' : 'Live support'}
+        {open ? 'Close support' : unread > 0 ? 'Support replied' : 'Live support'}
       </button>
     </div>
   );

@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { Session } from '@supabase/supabase-js';
 import AddToHomeScreen from '@/components/AddToHomeScreen';
 import BrandIntro from '@/components/BrandIntro';
@@ -14,6 +15,7 @@ import SiteFooter from '@/components/SiteFooter';
 import StreamView from '@/components/StreamView';
 import VisitorHeartbeat from '@/components/VisitorHeartbeat';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
+import { SITE_NAME_DISPLAY } from '@/lib/brand';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { isSiteAdmin } from '@/lib/site-admin';
 
@@ -25,6 +27,7 @@ function authHeaders(session: Session | null): HeadersInit {
 }
 
 export default function UFCAccess() {
+  const router = useRouter();
   const [view, setView] = useState<View>('loading');
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -37,6 +40,21 @@ export default function UFCAccess() {
   const [previewLive, setPreviewLive] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
+  const adminTapRef = useRef({ count: 0, lastAt: 0 });
+
+  const handleSecretAdminTap = useCallback(() => {
+    const now = Date.now();
+    const state = adminTapRef.current;
+    if (now - state.lastAt > 2000) {
+      state.count = 0;
+    }
+    state.lastAt = now;
+    state.count += 1;
+    if (state.count >= 5) {
+      state.count = 0;
+      router.push('/admin');
+    }
+  }, [router]);
 
   const loadStream = useCallback(async (activeSession?: Session | null) => {
     const res = await fetch('/api/stream', {
@@ -221,7 +239,14 @@ export default function UFCAccess() {
 
       <nav className="fixed top-0 z-50 w-full border-b border-red-600/80 bg-black/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-8 sm:py-5">
-          <BrandLogo />
+          <button
+            type="button"
+            onClick={handleSecretAdminTap}
+            className="cursor-default text-left"
+            aria-label={SITE_NAME_DISPLAY}
+          >
+            <BrandLogo />
+          </button>
           <div className="flex items-center gap-3 sm:gap-6">
             {view === 'stream' && (
               <div className="live-badge hidden items-center gap-2 sm:flex">

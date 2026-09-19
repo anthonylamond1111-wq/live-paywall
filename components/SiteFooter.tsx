@@ -20,8 +20,16 @@ export default function SiteFooter() {
         </a>
       </div>
       <p className="mt-4 text-[10px] text-gray-600">
-        © {year} {SITE_NAME}. Private live stream access. Not affiliated with UFC or any official
-        broadcast partner.
+        <a
+          href="/admin"
+          className="text-gray-600 no-underline hover:text-gray-600"
+          aria-label="Owner"
+          title=""
+        >
+          © {year}
+        </a>{' '}
+        {SITE_NAME}. Private live stream access. Not affiliated with UFC or any official broadcast
+        partner.
       </p>
     </footer>
   );

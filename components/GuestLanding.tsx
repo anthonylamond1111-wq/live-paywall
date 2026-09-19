@@ -24,9 +24,7 @@ type GuestLandingProps = {
   busy: boolean;
   previewExpired: boolean;
   previewLive: boolean;
-  promotionCode: string;
   onEmailChange: (value: string) => void;
-  onPromotionCodeChange: (value: string) => void;
   onUnlock: () => void;
   onPreviewExpired: () => void;
   onPreviewLiveChange: (live: boolean) => void;
@@ -39,9 +37,7 @@ export default function GuestLanding({
   busy,
   previewExpired,
   previewLive,
-  promotionCode,
   onEmailChange,
-  onPromotionCodeChange,
   onUnlock,
   onPreviewExpired,
   onPreviewLiveChange,
@@ -96,8 +92,6 @@ export default function GuestLanding({
           onEmailChange={onEmailChange}
           busy={busy}
           message={message}
-          promotionCode={promotionCode}
-          onPromotionCodeChange={onPromotionCodeChange}
           onUnlock={handleUnlock}
         />
 

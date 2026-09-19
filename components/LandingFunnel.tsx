@@ -36,8 +36,6 @@ type LandingFunnelProps = {
   onUnlock: () => void;
   onPreviewExpired: () => void;
   onPreviewLiveChange: (live: boolean) => void;
-  promotionCode?: string;
-  onPromotionCodeChange?: (value: string) => void;
 };
 
 export default function LandingFunnel({
@@ -58,8 +56,6 @@ export default function LandingFunnel({
   onUnlock,
   onPreviewExpired,
   onPreviewLiveChange,
-  promotionCode = '',
-  onPromotionCodeChange,
 }: LandingFunnelProps) {
   const handleUnlock = () => {
     trackAnalytics(AnalyticsEvents.UNLOCK_CLICK, {
@@ -197,8 +193,6 @@ export default function LandingFunnel({
           onEmailChange={onEmailChange}
           busy={busy}
           message={message}
-          promotionCode={promotionCode}
-          onPromotionCodeChange={onPromotionCodeChange}
           onUnlock={handleUnlock}
         />
 

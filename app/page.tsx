@@ -24,7 +24,6 @@ export default function UFCAccess() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
-  const [promotionCode, setPromotionCode] = useState('');
   const [previewExpired, setPreviewExpired] = useState(() => {
     if (typeof window === 'undefined') return false;
     return sessionStorage.getItem('ufc_preview_expired') === '1';
@@ -117,7 +116,7 @@ export default function UFCAccess() {
   const handleCheckout = useCallback(async () => {
     if (!email.trim()) {
       document.getElementById('pay')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setMessage('Enter your email so we can save access on this device.');
+      setMessage('Enter your email first, then click Pay £2.50.');
       return;
     }
 
@@ -131,7 +130,6 @@ export default function UFCAccess() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim(),
-          promotionCode: promotionCode.trim() || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -154,7 +152,7 @@ export default function UFCAccess() {
     } finally {
       setBusy(false);
     }
-  }, [email, promotionCode, loadStream]);
+  }, [email, loadStream]);
 
   const handleRestored = useCallback(async () => {
     setMessage('');
@@ -217,9 +215,7 @@ export default function UFCAccess() {
             busy={busy}
             previewExpired={previewExpired}
             previewLive={previewLive}
-            promotionCode={promotionCode}
             onEmailChange={setEmail}
-            onPromotionCodeChange={setPromotionCode}
             onUnlock={() => void handleCheckout()}
             onPreviewExpired={handlePreviewExpired}
             onPreviewLiveChange={setPreviewLive}

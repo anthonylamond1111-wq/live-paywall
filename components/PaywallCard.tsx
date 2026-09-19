@@ -1,6 +1,5 @@
 import { CHECKOUT_LABEL } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
-import DiscountCodeField from '@/components/DiscountCodeField';
 import FreeVsPaid from '@/components/FreeVsPaid';
 import PaymentBadges from '@/components/PaymentBadges';
 import SocialProof from '@/components/SocialProof';
@@ -10,8 +9,6 @@ type PaywallCardProps = {
   message?: string;
   busy: boolean;
   onCheckout: () => void;
-  promotionCode?: string;
-  onPromotionCodeChange?: (value: string) => void;
 };
 
 export default function PaywallCard({
@@ -19,8 +16,6 @@ export default function PaywallCard({
   message,
   busy,
   onCheckout,
-  promotionCode = '',
-  onPromotionCodeChange,
 }: PaywallCardProps) {
   return (
     <div className="space-y-6">
@@ -53,14 +48,6 @@ export default function PaywallCard({
         )}
 
         {message && <p className="mb-4 text-sm text-red-400">{message}</p>}
-
-        {onPromotionCodeChange && (
-          <DiscountCodeField
-            value={promotionCode}
-            onChange={onPromotionCodeChange}
-            disabled={busy}
-          />
-        )}
 
         <button
           type="button"

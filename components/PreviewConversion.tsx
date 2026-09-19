@@ -1,6 +1,5 @@
 'use client';
 
-import DiscountCodeField from '@/components/DiscountCodeField';
 import PaymentBadges from '@/components/PaymentBadges';
 import ShareButton from '@/components/ShareButton';
 import SocialProof from '@/components/SocialProof';
@@ -14,8 +13,6 @@ type PreviewConversionProps = {
   message?: string;
   email: string;
   onEmailChange: (value: string) => void;
-  promotionCode?: string;
-  onPromotionCodeChange?: (value: string) => void;
 };
 
 const TRUST_POINTS = [
@@ -32,8 +29,6 @@ export default function PreviewConversion({
   message,
   email,
   onEmailChange,
-  promotionCode = '',
-  onPromotionCodeChange,
 }: PreviewConversionProps) {
   return (
     <div
@@ -66,13 +61,17 @@ export default function PreviewConversion({
         ))}
       </ul>
 
+      <p className="mt-5 rounded-xl border border-zinc-700/80 bg-black/50 px-4 py-3 text-center text-sm text-gray-300">
+        Enter your email first, then click <span className="font-semibold text-white">{CHECKOUT_LABEL}</span>
+      </p>
+
       {message && (
-        <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-300">
+        <p className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-300">
           {message}
         </p>
       )}
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-4 space-y-3">
         <input
           type="email"
           required
@@ -81,13 +80,6 @@ export default function PreviewConversion({
           onChange={(e) => onEmailChange(e.target.value)}
           className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3.5 text-base text-white outline-none transition focus:border-red-500"
         />
-        {onPromotionCodeChange && (
-          <DiscountCodeField
-            value={promotionCode}
-            onChange={onPromotionCodeChange}
-            disabled={busy}
-          />
-        )}
         <button
           type="button"
           onClick={onUnlock}

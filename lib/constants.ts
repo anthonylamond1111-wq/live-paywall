@@ -20,7 +20,7 @@ export function getStreamUrl(): string {
 /** Browser-facing URL — proxied through our API for reliable HLS playback */
 export const PLAYER_STREAM_URL = '/api/hls/playlist';
 
-export const PREVIEW_SECONDS = 60;
+export const PREVIEW_SECONDS = 90;
 
 export function formatPreviewDuration(short = false): string {
   if (PREVIEW_SECONDS >= 60 && PREVIEW_SECONDS % 60 === 0) {

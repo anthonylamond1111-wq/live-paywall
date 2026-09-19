@@ -24,6 +24,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as {
       message?: string;
+      name?: string;
       email?: string;
     };
 
@@ -34,9 +35,15 @@ export async function POST(request: Request) {
 
     const cookieStore = await cookies();
     const threadId = getOrCreateThreadId(cookieStore.get(SUPPORT_THREAD_COOKIE)?.value);
-    const email = body.email?.trim().slice(0, 120) || null;
+    // Stored in email column as visitor display name (no schema change needed).
+    const visitorName =
+      body.name?.trim().slice(0, 80) || body.email?.trim().slice(0, 120) || null;
 
-    const data = await addVisitorMessage({ threadId, body: message, email });
+    const data = await addVisitorMessage({
+      threadId,
+      body: message,
+      email: visitorName,
+    });
 
     const response = NextResponse.json({ message: data });
     response.cookies.set(supportThreadCookieOptions(threadId));

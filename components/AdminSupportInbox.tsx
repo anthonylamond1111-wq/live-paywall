@@ -10,6 +10,7 @@ import {
 type SupportThread = {
   threadId: string;
   email: string | null;
+  name?: string | null;
   messages: Array<{
     id: string;
     role: string;
@@ -73,7 +74,7 @@ export default function AdminSupportInbox({ session }: { session: Session }) {
       if (message) {
         showSupportNotification({
           title: 'New support message',
-          body: `${thread?.email ?? 'Visitor'}: ${message.body.slice(0, 100)}`,
+          body: `${thread?.name ?? thread?.email ?? 'Visitor'}: ${message.body.slice(0, 100)}`,
           tag: `support-visitor-${id}`,
         });
       }
@@ -156,7 +157,7 @@ export default function AdminSupportInbox({ session }: { session: Session }) {
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-medium text-white">
-                    {thread.email ?? `Visitor ${thread.threadId.slice(0, 8)}`}
+                    {thread.name ?? thread.email ?? `Visitor ${thread.threadId.slice(0, 8)}`}
                   </p>
                   {thread.needsReply && (
                     <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
@@ -182,7 +183,7 @@ export default function AdminSupportInbox({ session }: { session: Session }) {
             <>
               <div className="border-b border-zinc-800 px-4 py-3">
                 <p className="font-medium text-white">
-                  {selected.email ?? `Visitor ${selected.threadId.slice(0, 8)}`}
+                  {selected.name ?? selected.email ?? `Visitor ${selected.threadId.slice(0, 8)}`}
                 </p>
                 <p className="text-xs text-gray-600">{selected.messages.length} messages saved</p>
               </div>

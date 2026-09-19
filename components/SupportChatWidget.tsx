@@ -23,7 +23,8 @@ function formatTime(iso: string) {
 export default function SupportChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [problem, setProblem] = useState('');
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -31,6 +32,8 @@ export default function SupportChatWidget() {
   const [unread, setUnread] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(false);
+
+  const isFirstMessage = messages.length === 0;
 
   useEffect(() => {
     openRef.current = open;
@@ -79,7 +82,6 @@ export default function SupportChatWidget() {
     }
   }, []);
 
-  // Poll while closed too — so this visitor (only) can get reply alerts.
   useEffect(() => {
     void loadMessages();
     const timer = window.setInterval(() => void loadMessages(), open ? 4000 : 10000);
@@ -101,8 +103,23 @@ export default function SupportChatWidget() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    const message = draft.trim();
-    if (!message || sending) return;
+    if (sending) return;
+
+    const visitorName = name.trim();
+    const message = (isFirstMessage ? problem : draft).trim();
+
+    if (isFirstMessage) {
+      if (!visitorName) {
+        setError('Enter your name');
+        return;
+      }
+      if (!message) {
+        setError('Tell us what the problem is');
+        return;
+      }
+    } else if (!message) {
+      return;
+    }
 
     setSending(true);
     setError('');
@@ -114,7 +131,7 @@ export default function SupportChatWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message,
-          email: email.trim() || undefined,
+          name: visitorName || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -129,6 +146,7 @@ export default function SupportChatWidget() {
       } else {
         await loadMessages();
       }
+      setProblem('');
       setDraft('');
     } catch {
       setError('Could not send message');
@@ -136,6 +154,10 @@ export default function SupportChatWidget() {
       setSending(false);
     }
   };
+
+  const canSend = isFirstMessage
+    ? Boolean(name.trim() && problem.trim())
+    : Boolean(draft.trim());
 
   return (
     <div className="pointer-events-none fixed bottom-28 right-4 z-50">
@@ -147,7 +169,9 @@ export default function SupportChatWidget() {
                 Live support
               </p>
               <p className="mt-0.5 text-sm font-semibold text-white">Need help tonight?</p>
-              <p className="mt-1 text-xs text-gray-500">Payment, stream, or access issues</p>
+              <p className="mt-1 text-xs font-medium text-green-400">
+                We usually reply within a minute
+              </p>
             </div>
             <button
               type="button"
@@ -166,7 +190,7 @@ export default function SupportChatWidget() {
 
             {!loading && messages.length === 0 && !error && (
               <div className="rounded-xl border border-zinc-800 bg-black/40 px-3 py-3 text-sm text-gray-400">
-                Send a message and we&apos;ll reply here. Your chat stays saved on this device.
+                Enter your name and what&apos;s wrong — we reply here fast, usually within a minute.
               </div>
             )}
 
@@ -205,32 +229,76 @@ export default function SupportChatWidget() {
           </div>
 
           <form onSubmit={sendMessage} className="border-t border-zinc-800 bg-black/50 p-3">
-            {messages.length === 0 && (
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email (optional, for follow-up)"
-                className="mb-2 w-full rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm text-white outline-none focus:border-red-500"
-              />
+            {isFirstMessage ? (
+              <div className="space-y-2">
+                <div>
+                  <label htmlFor="support-name" className="mb-1 block text-xs font-medium text-gray-400">
+                    Your name
+                  </label>
+                  <input
+                    id="support-name"
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    maxLength={80}
+                    placeholder="Enter name"
+                    className="w-full rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm text-white outline-none focus:border-red-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="support-problem"
+                    className="mb-1 block text-xs font-medium text-gray-400"
+                  >
+                    What&apos;s the problem?
+                  </label>
+                  <textarea
+                    id="support-problem"
+                    required
+                    value={problem}
+                    onChange={(e) => setProblem(e.target.value)}
+                    maxLength={1000}
+                    rows={3}
+                    placeholder="e.g. Can’t pay, stream not loading, restore access…"
+                    className="w-full resize-none rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm text-white outline-none focus:border-red-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={sending || !canSend}
+                  className="w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-gray-100 disabled:opacity-50"
+                >
+                  {sending ? 'Sending…' : 'Send to support'}
+                </button>
+                <p className="text-center text-[11px] font-medium text-green-400/90">
+                  We reply within a minute
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    maxLength={1000}
+                    placeholder="Type a follow-up…"
+                    className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm text-white outline-none focus:border-red-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={sending || !canSend}
+                    className="shrink-0 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-gray-100 disabled:opacity-50"
+                  >
+                    Send
+                  </button>
+                </div>
+                <p className="text-center text-[10px] text-gray-500">
+                  We usually reply within a minute
+                </p>
+              </div>
             )}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                maxLength={1000}
-                placeholder="Type your message…"
-                className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm text-white outline-none focus:border-red-500"
-              />
-              <button
-                type="submit"
-                disabled={sending || !draft.trim()}
-                className="shrink-0 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-gray-100 disabled:opacity-50"
-              >
-                Send
-              </button>
-            </div>
             {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
             <p className="mt-2 text-center text-[10px] text-gray-600">
               Or email{' '}

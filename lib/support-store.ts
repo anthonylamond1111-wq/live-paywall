@@ -12,6 +12,8 @@ export type SupportMessageRow = {
 export type SupportThreadSummary = {
   threadId: string;
   email: string | null;
+  /** Visitor display name (stored in email column). */
+  name: string | null;
   messages: Array<{
     id: string;
     role: string;
@@ -50,6 +52,7 @@ function buildThreads(rows: SupportMessageRow[]): SupportThreadSummary[] {
       threads.set(row.thread_id, {
         threadId: row.thread_id,
         email: row.email ?? null,
+        name: row.email ?? null,
         messages: [entry],
         lastAt: row.created_at,
         needsReply: row.role === 'visitor',
@@ -58,7 +61,10 @@ function buildThreads(rows: SupportMessageRow[]): SupportThreadSummary[] {
       continue;
     }
 
-    if (row.email && !existing.email) existing.email = row.email;
+    if (row.email && !existing.email) {
+      existing.email = row.email;
+      existing.name = row.email;
+    }
     existing.messages.push(entry);
     existing.lastAt = row.created_at;
     existing.needsReply = row.role === 'visitor';

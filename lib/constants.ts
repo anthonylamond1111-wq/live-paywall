@@ -23,6 +23,9 @@ export const PLAYER_STREAM_URL = '/api/hls/playlist';
 export const PREVIEW_SECONDS = 90;
 
 export function formatPreviewDuration(short = false): string {
+  if (PREVIEW_SECONDS === 90) {
+    return short ? '90 sec' : '90-second';
+  }
   if (PREVIEW_SECONDS >= 60 && PREVIEW_SECONDS % 60 === 0) {
     const mins = PREVIEW_SECONDS / 60;
     return short ? `${mins} min` : `${mins}-minute`;

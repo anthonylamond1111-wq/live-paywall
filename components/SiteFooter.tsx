@@ -1,4 +1,3 @@
-import DiscordHelpLink from '@/components/DiscordHelpLink';
 import { SITE_NAME, SITE_NAME_DISPLAY } from '@/lib/brand';
 
 export default function SiteFooter() {
@@ -10,7 +9,6 @@ export default function SiteFooter() {
         {SITE_NAME_DISPLAY}
       </p>
       <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-gray-500">
-        <DiscordHelpLink />
         <a href="/support" className="transition hover:text-red-400">
           Support
         </a>
@@ -22,7 +20,8 @@ export default function SiteFooter() {
         </a>
       </div>
       <p className="mt-4 text-[10px] text-gray-600">
-        © {year} {SITE_NAME}. Private live stream access. Not affiliated with UFC or any official broadcast partner.
+        © {year} {SITE_NAME}. Private live stream access. Not affiliated with UFC or any official
+        broadcast partner.
       </p>
     </footer>
   );

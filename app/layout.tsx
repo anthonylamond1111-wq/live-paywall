@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Suspense } from 'react';
 import GoogleAnalytics, { GoogleAnalyticsPageView } from '@/components/GoogleAnalytics';
-import DiscordHelpLink from '@/components/DiscordHelpLink';
 import SupportChatWidget from '@/components/SupportChatWidget';
 import IntroSoundPreloader from '@/components/IntroSoundPreloader';
 import SiteVisitorHeartbeat from '@/components/SiteVisitorHeartbeat';
@@ -83,9 +82,6 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <SiteVisitorHeartbeat />
         </Suspense>
-        <div className="pointer-events-none fixed bottom-28 left-4 z-50">
-          <DiscordHelpLink className="pointer-events-auto shadow-lg shadow-black/40" />
-        </div>
         <SupportChatWidget />
         {children}
       </body>

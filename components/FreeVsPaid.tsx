@@ -2,11 +2,19 @@ import { formatPreviewDuration } from '@/lib/constants';
 
 export default function FreeVsPaid() {
   const rows = [
-    { feature: 'Watch time', free: `${formatPreviewDuration(true)} preview`, paid: 'Full event' },
-    { feature: 'Video quality', free: 'Preview only', paid: 'Full HD' },
+    {
+      feature: 'Watch time',
+      free: `${formatPreviewDuration(true)} preview`,
+      paid: 'Full event',
+    },
+    {
+      feature: 'Video',
+      free: 'Blurred + muted',
+      paid: 'Clear HD + audio',
+    },
     { feature: 'Live chat', free: '—', paid: '✓' },
-    { feature: 'All devices', free: '—', paid: '✓' },
-    { feature: 'Saved access', free: '—', paid: '✓' },
+    { feature: 'Saved on device', free: '—', paid: '✓' },
+    { feature: 'Restore by email', free: '—', paid: '✓' },
   ];
 
   return (

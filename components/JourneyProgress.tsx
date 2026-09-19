@@ -1,8 +1,7 @@
-type JourneyStep = 'preview' | 'account' | 'pay' | 'watch';
+type JourneyStep = 'preview' | 'pay' | 'watch';
 
 const STEPS: { id: JourneyStep; label: string }[] = [
   { id: 'preview', label: 'Preview' },
-  { id: 'account', label: 'Account' },
   { id: 'pay', label: 'Pay' },
   { id: 'watch', label: 'Watch' },
 ];
@@ -20,7 +19,7 @@ export default function JourneyProgress({ current, onDark = false }: JourneyProg
   const currentIdx = stepIndex(current);
 
   return (
-    <div className="mb-6 sm:mb-8">
+    <div className="mb-4 sm:mb-5">
       <div className="flex items-center justify-between">
         {STEPS.map((step, index) => {
           const done = index < currentIdx;

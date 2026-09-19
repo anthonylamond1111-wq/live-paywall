@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import StreamPlayer, { useStreamFullscreen } from '@/components/StreamPlayer';
 import StreamConnecting from '@/components/StreamConnecting';
 import StreamOffline, { useStreamSchedule } from '@/components/StreamOffline';
-import { formatPreviewDuration, PREVIEW_SECONDS } from '@/lib/constants';
+import { formatPreviewDuration, PREVIEW_SECONDS, CHECKOUT_LABEL } from '@/lib/constants';
 import { AnalyticsEvents, trackAnalytics } from '@/lib/analytics';
 
 const PREVIEW_START_KEY = 'ufc_preview_started_at';
@@ -353,8 +353,8 @@ export default function PreviewStream({
           )}
 
           {!loading && expired && (
-            <div className="preview-ended absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/55 px-6 text-center">
-              <div className="preview-lock-icon flex h-16 w-16 items-center justify-center rounded-full">
+            <div className="preview-ended preview-locked-overlay absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/60 px-6 text-center">
+              <div className="preview-lock-icon preview-lock-pulse flex h-16 w-16 items-center justify-center rounded-full">
                 <svg className="h-8 w-8 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     strokeLinecap="round"
@@ -366,16 +366,16 @@ export default function PreviewStream({
               </div>
               <div>
                 <p className="text-xl font-bold text-white sm:text-2xl">Preview ended</p>
-                <p className="mt-2 max-w-sm text-sm leading-relaxed text-gray-300">
-                  The fight is still going — pay once for clear HD and full audio on this device.
+                <p className="mt-2 max-w-sm text-sm leading-relaxed text-gray-200">
+                  Still live — pay once for clear HD and full audio on this device.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onUnlock}
-                className="mt-1 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-gray-100"
+                className="pay-cta-btn mt-1 rounded-full bg-white px-8 py-3.5 text-base font-semibold text-black shadow-[0_0_32px_rgba(255,255,255,0.25)] transition hover:bg-gray-100 active:scale-[0.98]"
               >
-                Pay & watch live
+                {CHECKOUT_LABEL} · Watch clear
               </button>
             </div>
           )}

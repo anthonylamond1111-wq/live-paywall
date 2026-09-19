@@ -1,10 +1,12 @@
 'use client';
 
 import EventCountdown from '@/components/EventCountdown';
+import FaceOff from '@/components/FaceOff';
 import FAQ from '@/components/FAQ';
 import FreeVsPaid from '@/components/FreeVsPaid';
 import JourneyProgress from '@/components/JourneyProgress';
 import LiveUpdateBanner from '@/components/LiveUpdateBanner';
+import LiveWatchingBadge from '@/components/LiveWatchingBadge';
 import NotifyWhenLive from '@/components/NotifyWhenLive';
 import PreviewConversion from '@/components/PreviewConversion';
 import PreviewStream from '@/components/PreviewStream';
@@ -50,9 +52,12 @@ export default function GuestLanding({
     onUnlock();
   };
 
+  const journeyCurrent = previewExpired ? 'pay' : 'preview';
+
   return (
     <>
-      <div className={`${LANDING_FUNNEL_WIDTH} space-y-5 pb-20 sm:space-y-6`}>
+      <div className={`${LANDING_FUNNEL_WIDTH} space-y-4 pb-24 sm:space-y-5`}>
+        {/* First viewport: brand signal via fighters + countdown + player */}
         <header className="border-b border-red-600/20 pb-4 text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-500 sm:text-xs">
             {EVENT.number} • {EVENT.tagline}
@@ -65,19 +70,15 @@ export default function GuestLanding({
           <p className="mt-1.5 text-sm text-gray-500">{EVENT.venue}</p>
         </header>
 
+        <FaceOff />
         <EventCountdown />
+        <LiveWatchingBadge visible={previewLive || previewExpired} />
 
         <p className="text-center text-sm text-gray-400">
           Free {formatPreviewDuration()} preview — then pay once. No account needed.
         </p>
-        <div className="flex justify-center">
-          <ShareButton
-            variant="promo"
-            className="rounded-full border border-zinc-700 bg-zinc-900/60 px-4 py-2 text-xs font-medium text-gray-300 transition hover:border-red-500 hover:text-white sm:text-sm"
-          />
-        </div>
 
-        <JourneyProgress current="preview" onDark />
+        <JourneyProgress current={journeyCurrent} onDark />
         <LiveUpdateBanner />
 
         <PreviewStream
@@ -97,6 +98,13 @@ export default function GuestLanding({
 
         <RestoreAccessForm busy={busy} onRestored={onRestored} />
 
+        {/* Secondary: share, notify, compare, FAQ */}
+        <div className="flex justify-center pt-2">
+          <ShareButton
+            variant="promo"
+            className="rounded-full border border-zinc-700 bg-zinc-900/60 px-4 py-2 text-xs font-medium text-gray-300 transition hover:border-red-500 hover:text-white sm:text-sm"
+          />
+        </div>
         <NotifyWhenLive />
         <FreeVsPaid />
         <FAQ />
@@ -106,6 +114,7 @@ export default function GuestLanding({
         visible={previewExpired || previewLive}
         onUnlock={handleUnlock}
         busy={busy}
+        hasEmail={Boolean(email.trim())}
       />
     </>
   );

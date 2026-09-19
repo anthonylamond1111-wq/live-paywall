@@ -1,7 +1,6 @@
 'use client';
 
 import PaymentBadges from '@/components/PaymentBadges';
-import ShareButton from '@/components/ShareButton';
 import SocialProof from '@/components/SocialProof';
 import { CHECKOUT_LABEL } from '@/lib/constants';
 import { EVENT } from '@/lib/event';
@@ -62,7 +61,8 @@ export default function PreviewConversion({
       </ul>
 
       <p className="mt-5 rounded-xl border border-zinc-700/80 bg-black/50 px-4 py-3 text-center text-sm text-gray-300">
-        Enter your email first, then click <span className="font-semibold text-white">{CHECKOUT_LABEL}</span>
+        Enter your email first, then click{' '}
+        <span className="font-semibold text-white">{CHECKOUT_LABEL}</span>
       </p>
 
       {message && (
@@ -84,20 +84,17 @@ export default function PreviewConversion({
           type="button"
           onClick={onUnlock}
           disabled={busy}
-          className="w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
+          className="pay-cta-btn w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
         >
           {busy ? 'Redirecting to Stripe…' : CHECKOUT_LABEL}
         </button>
+        <p className="text-center text-xs text-gray-500">
+          Instant unlock · Stripe secure
+        </p>
       </div>
 
       <div className="mt-4 space-y-3">
         <SocialProof />
-        <div className="flex justify-center">
-          <ShareButton
-            variant="promo"
-            className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-2.5 text-sm text-gray-300 transition hover:border-red-500 sm:w-auto"
-          />
-        </div>
         <PaymentBadges />
       </div>
     </div>

@@ -308,6 +308,58 @@ body {
   background: rgba(0, 0, 0, 0.25);
 }
 
+.preview-lock-pulse {
+  animation: preview-pulse 2s ease-in-out infinite;
+}
+
+@keyframes countdown-flash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.55;
+  }
+}
+
+.countdown-seconds {
+  animation: countdown-flash 1s steps(1) infinite;
+}
+
+.fighter-face-left {
+  animation: fighter-in-left 0.7s ease-out both;
+}
+
+.fighter-face-right {
+  animation: fighter-in-right 0.7s ease-out both;
+}
+
+@keyframes fighter-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-16px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes fighter-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.pay-cta-btn:active {
+  transform: scale(0.985);
+}
+
 @keyframes chat-glove-punch {
   0%,
   100% {

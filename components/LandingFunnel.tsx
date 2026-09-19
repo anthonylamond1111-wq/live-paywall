@@ -69,7 +69,7 @@ export default function LandingFunnel({
     onSubmit(e);
   };
 
-  const journeyStep = isLoggedIn ? ('pay' as const) : ('account' as const);
+  const journeyStep = previewExpired || isLoggedIn ? ('pay' as const) : ('preview' as const);
 
   return (
     <>

@@ -6,7 +6,7 @@ import { EVENT } from '@/lib/event';
 import JourneyProgress from '@/components/JourneyProgress';
 
 type FightNightLandingProps = {
-  journeyStep: 'preview' | 'account' | 'pay' | 'watch';
+  journeyStep: 'preview' | 'pay' | 'watch';
   hideSignupCta?: boolean;
   compact?: boolean;
   extendForSuccess?: boolean;

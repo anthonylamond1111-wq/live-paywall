@@ -194,7 +194,7 @@ export default function UFCAccess() {
                 Stats
               </Link>
             )}
-            <DiscordHelpLink compact className="hidden sm:inline-flex" />
+            <DiscordHelpLink compact />
           </div>
         </div>
       </nav>

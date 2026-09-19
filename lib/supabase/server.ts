@@ -247,6 +247,40 @@ export async function findPaidStripeSessionForUser(
   return null;
 }
 
+export async function findPaidStripeSessionForEmail(
+  email: string
+): Promise<Stripe.Checkout.Session | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const stripe = getStripe();
+  const since = getStreamAccessStartedAtUnix();
+  let startingAfter: string | undefined;
+
+  for (let page = 0; page < 10; page++) {
+    const sessions = await stripe.checkout.sessions.list({
+      status: 'complete',
+      limit: 100,
+      created: { gte: since },
+      starting_after: startingAfter,
+    });
+
+    for (const checkoutSession of sessions.data) {
+      if (!isPaidCheckoutSession(checkoutSession)) continue;
+      if (!isCurrentStreamPayment(checkoutSession.created)) continue;
+      const paidEmail = sessionEmail(checkoutSession)?.toLowerCase();
+      if (paidEmail === normalized) {
+        return checkoutSession;
+      }
+    }
+
+    if (!sessions.has_more || sessions.data.length === 0) break;
+    startingAfter = sessions.data[sessions.data.length - 1].id;
+  }
+
+  return null;
+}
+
 export async function syncStripePurchasesForUser(user: AccessUser): Promise<boolean> {
   const checkoutSession = await findPaidStripeSessionForUser(user);
   if (!checkoutSession) return false;

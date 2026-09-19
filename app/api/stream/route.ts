@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getHlsPlaylistPath } from '@/lib/hls-access';
 import { getStreamUrl } from '@/lib/constants';
-import { attachStreamAccessCookies } from '@/lib/stream-grant-cookie';
+import { hasPaidAccess } from '@/lib/access-cookie';
 import {
   getTokenFromRequest,
   getUserFromRequest,
@@ -22,23 +22,25 @@ function getRequestOrigin(request: Request): string {
 }
 
 export async function GET(request: Request) {
-  const user = await getUserFromRequest(request);
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   if (!getStreamUrl()) {
     return NextResponse.json({ error: 'Stream not configured' }, { status: 500 });
   }
 
-  const token = getTokenFromRequest(request);
-  const paid = await resolveUserAccess(user, token);
-  if (!paid) {
-    return NextResponse.json({ error: 'Payment required' }, { status: 402 });
+  if (await hasPaidAccess()) {
+    const origin = getRequestOrigin(request);
+    return NextResponse.json({ url: `${origin}${getHlsPlaylistPath()}`, guest: true });
   }
 
-  const origin = getRequestOrigin(request);
-  const response = NextResponse.json({ url: `${origin}${getHlsPlaylistPath()}` });
-  await attachStreamAccessCookies(response, user);
-  return response;
+  const user = await getUserFromRequest(request);
+  if (user) {
+    const token = getTokenFromRequest(request);
+    const paid = await resolveUserAccess(user, token);
+    if (!paid) {
+      return NextResponse.json({ error: 'Payment required' }, { status: 402 });
+    }
+    const origin = getRequestOrigin(request);
+    return NextResponse.json({ url: `${origin}${getHlsPlaylistPath()}` });
+  }
+
+  return NextResponse.json({ error: 'Payment required' }, { status: 402 });
 }

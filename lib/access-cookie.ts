@@ -1,8 +1,19 @@
 import { cookies } from 'next/headers';
 import { getStripe } from '@/lib/stripe';
 import { isCurrentStreamPayment } from '@/lib/stream-access';
+import {
+  getDeviceTokenFromCookies,
+  isActivePaidDevice,
+} from '@/lib/device-access';
 
 export const ACCESS_COOKIE = 'ufc_stream_access';
+
+function stripeSessionEmail(session: {
+  customer_email?: string | null;
+  customer_details?: { email?: string | null } | null;
+}) {
+  return session.customer_details?.email ?? session.customer_email ?? null;
+}
 
 export async function getAccessSessionId(): Promise<string | null> {
   const cookieStore = await cookies();
@@ -15,9 +26,18 @@ export async function hasPaidAccess(sessionId?: string | null): Promise<boolean>
 
   try {
     const session = await getStripe().checkout.sessions.retrieve(id);
-    return (
-      session.payment_status === 'paid' && isCurrentStreamPayment(session.created)
-    );
+    if (
+      session.payment_status !== 'paid' ||
+      !isCurrentStreamPayment(session.created)
+    ) {
+      return false;
+    }
+
+    const email = stripeSessionEmail(session);
+    if (!email) return false;
+
+    const deviceToken = await getDeviceTokenFromCookies();
+    return isActivePaidDevice(email, deviceToken);
   } catch {
     return false;
   }
@@ -30,7 +50,7 @@ export function accessCookieOptions(sessionId: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
-    maxAge: 60 * 60 * 12,
+    maxAge: 60 * 60 * 48,
     path: '/',
   };
 }

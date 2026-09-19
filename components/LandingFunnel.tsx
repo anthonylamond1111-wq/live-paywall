@@ -193,8 +193,8 @@ export default function LandingFunnel({
 
         <PreviewConversion
           variant={previewExpired ? 'expired' : 'default'}
-          isLoggedIn={isLoggedIn}
-          userEmail={userEmail}
+          email={email}
+          onEmailChange={onEmailChange}
           busy={busy}
           message={message}
           promotionCode={promotionCode}
@@ -209,7 +209,6 @@ export default function LandingFunnel({
 
       <StickyUnlockCta
         visible={previewExpired || previewLive}
-        isLoggedIn={isLoggedIn}
         onUnlock={handleUnlock}
         busy={busy}
       />

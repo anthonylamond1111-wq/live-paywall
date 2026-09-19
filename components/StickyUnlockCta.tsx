@@ -2,18 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { CHECKOUT_LABEL } from '@/lib/constants';
-import { LANDING_FUNNEL_WIDTH } from '@/components/LandingFunnel';
+import { LANDING_FUNNEL_WIDTH } from '@/components/GuestLanding';
 
 type StickyUnlockCtaProps = {
   visible: boolean;
-  isLoggedIn?: boolean;
   onUnlock: () => void;
   busy?: boolean;
 };
 
 export default function StickyUnlockCta({
   visible,
-  isLoggedIn = false,
   onUnlock,
   busy = false,
 }: StickyUnlockCtaProps) {
@@ -49,7 +47,7 @@ export default function StickyUnlockCta({
           disabled={busy}
           className="shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
         >
-          {busy ? '…' : isLoggedIn ? 'Pay & watch' : 'Create account'}
+          {busy ? '…' : 'Pay & watch'}
         </button>
       </div>
     </div>

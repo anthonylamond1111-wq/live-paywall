@@ -1,37 +1,37 @@
 'use client';
 
-import { CHECKOUT_LABEL } from '@/lib/constants';
-import { EVENT } from '@/lib/event';
 import DiscountCodeField from '@/components/DiscountCodeField';
 import PaymentBadges from '@/components/PaymentBadges';
 import ShareButton from '@/components/ShareButton';
 import SocialProof from '@/components/SocialProof';
+import { CHECKOUT_LABEL } from '@/lib/constants';
+import { EVENT } from '@/lib/event';
 
 type PreviewConversionProps = {
   onUnlock: () => void;
   variant?: 'default' | 'expired';
-  isLoggedIn?: boolean;
-  userEmail?: string | null;
   busy?: boolean;
   message?: string;
+  email: string;
+  onEmailChange: (value: string) => void;
   promotionCode?: string;
   onPromotionCodeChange?: (value: string) => void;
 };
 
 const TRUST_POINTS = [
   'Real live HD stream',
-  'Secure Stripe checkout',
-  'Works on phone & TV',
-  'Instant access after payment',
+  'No account needed',
+  'Saved on this device',
+  'One device at a time',
 ];
 
 export default function PreviewConversion({
   onUnlock,
   variant = 'default',
-  isLoggedIn = false,
-  userEmail,
   busy = false,
   message,
+  email,
+  onEmailChange,
   promotionCode = '',
   onPromotionCodeChange,
 }: PreviewConversionProps) {
@@ -42,7 +42,7 @@ export default function PreviewConversion({
     >
       <div className="text-center">
         <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-red-400">
-          Step 3 · Pay & watch
+          Pay once · Watch on this device
         </p>
         <h2 className="mt-2 text-xl font-bold text-white sm:text-2xl">
           {variant === 'expired'
@@ -50,9 +50,8 @@ export default function PreviewConversion({
             : 'Ready to watch the full event?'}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-gray-400">
-          {isLoggedIn
-            ? 'One-time payment for full HD stream and live chat.'
-            : 'Create your account above first, then come back here to pay.'}
+          No signup. Pay once and this device keeps access. Restore on a new device with
+          your receipt email — that kicks the old device.
         </p>
         <p className="mt-3 text-lg font-semibold text-white">{EVENT.priceLabel}</p>
       </div>
@@ -66,36 +65,37 @@ export default function PreviewConversion({
         ))}
       </ul>
 
-      {isLoggedIn && userEmail && (
-        <p className="mt-5 text-center text-sm text-gray-500">Signed in as {userEmail}</p>
-      )}
-
       {message && (
         <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-300">
           {message}
         </p>
       )}
 
-      {isLoggedIn && onPromotionCodeChange && (
-        <DiscountCodeField
-          value={promotionCode}
-          onChange={onPromotionCodeChange}
-          disabled={busy}
+      <div className="mt-5 space-y-3">
+        <input
+          type="email"
+          required
+          placeholder="Email for your ticket / receipt"
+          value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
+          className="w-full rounded-xl border border-zinc-700 bg-black px-4 py-3.5 text-base text-white outline-none transition focus:border-red-500"
         />
-      )}
-
-      <button
-        type="button"
-        onClick={onUnlock}
-        disabled={busy}
-        className="mt-5 w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
-      >
-        {busy
-          ? 'Redirecting to Stripe…'
-          : isLoggedIn
-            ? CHECKOUT_LABEL
-            : 'Create account to pay'}
-      </button>
+        {onPromotionCodeChange && (
+          <DiscountCodeField
+            value={promotionCode}
+            onChange={onPromotionCodeChange}
+            disabled={busy}
+          />
+        )}
+        <button
+          type="button"
+          onClick={onUnlock}
+          disabled={busy}
+          className="w-full rounded-2xl bg-white py-4 text-lg font-semibold text-black transition hover:bg-gray-100 active:scale-[0.985] disabled:opacity-60"
+        >
+          {busy ? 'Redirecting to Stripe…' : CHECKOUT_LABEL}
+        </button>
+      </div>
 
       <div className="mt-4 space-y-3">
         <SocialProof />

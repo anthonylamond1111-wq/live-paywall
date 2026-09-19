@@ -15,14 +15,14 @@ import StreamHealth, { type StreamHealthStatus } from '@/components/StreamHealth
 import LiveUpdateBanner from '@/components/LiveUpdateBanner';
 import StreamFeedbackPrompt from '@/components/StreamFeedbackPrompt';
 import ShareButton from '@/components/ShareButton';
-import { LANDING_FUNNEL_WIDTH } from '@/components/LandingFunnel';
+import { LANDING_FUNNEL_WIDTH } from '@/components/GuestLanding';
 
 type PlayerMode = 'normal' | 'theatre' | 'fullscreen';
 
 type StreamViewProps = {
-  session: Session;
+  session?: Session | null;
   streamUrl: string;
-  onBackToHome: () => void;
+  onBackToHome?: () => void;
 };
 
 export default function StreamView({ session, streamUrl, onBackToHome }: StreamViewProps) {
@@ -141,20 +141,24 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
                 />
                 {statusLabel}
               </div>
-              {isLive && <ViewerCount session={session} onCountChange={setViewerCount} />}
+              {isLive && session && (
+                <ViewerCount session={session} onCountChange={setViewerCount} />
+              )}
               {isLive && <StreamHealth status={health} />}
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2">
               <ShareButton />
               <CastToTvButton videoRef={videoRef} variant="toolbar" />
-              <button
-                type="button"
-                onClick={onBackToHome}
-                className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-medium text-gray-300 transition hover:border-red-500 sm:text-sm"
-              >
-                Back to home
-              </button>
+              {onBackToHome && (
+                <button
+                  type="button"
+                  onClick={onBackToHome}
+                  className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-medium text-gray-300 transition hover:border-red-500 sm:text-sm"
+                >
+                  Back to home
+                </button>
+              )}
               <button
                 type="button"
                 onClick={toggleTheatre}
@@ -209,7 +213,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
             src={streamUrl}
             fill={isFullscreen}
             videoRef={videoRef}
-            accessToken={session.access_token}
+            accessToken={session?.access_token}
             showCastButton
             onLiveChange={setIsLive}
             onHealthChange={setHealth}
@@ -240,7 +244,7 @@ export default function StreamView({ session, streamUrl, onBackToHome }: StreamV
           </div>
         )}
 
-        {!isFullscreen && (
+        {!isFullscreen && session && (
           <div className={isTheatre ? 'mx-auto w-full max-w-3xl' : 'w-full'}>
             <LiveChat
               session={session}

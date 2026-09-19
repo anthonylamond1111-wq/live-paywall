@@ -7,7 +7,9 @@ import {
 } from '@/lib/stripe-checkout';
 import { getStripe } from '@/lib/stripe';
 import { resolvePromotionCodeId } from '@/lib/stripe-promo';
+import { hasPaidAccess } from '@/lib/access-cookie';
 import {
+  ensureUserForCheckout,
   getTokenFromRequest,
   getUserFromRequest,
   resolveUserAccess,
@@ -17,7 +19,6 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 function readRuntimeEnv(key: string): string | undefined {
-  // Dynamic key so Next.js cannot replace this with a build-time constant.
   return process.env[key];
 }
 
@@ -68,9 +69,12 @@ function friendlyCheckoutError(error: string): string {
 }
 
 function arePaymentsEnabled() {
-  // Sales stay open unless PAYMENTS_ENABLED=false. Read at request time only.
   const value = (readRuntimeEnv('PAYMENTS_ENABLED') ?? '').trim().toLowerCase();
   return value !== 'false';
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export async function POST(request: Request) {
@@ -82,17 +86,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await getUserFromRequest(request);
-    const token = getTokenFromRequest(request);
-
-    if (!user) {
+    if (await hasPaidAccess()) {
       return NextResponse.json(
-        { error: 'Create an account and log in before paying.' },
-        { status: 401 }
+        { error: 'This device already has access', alreadyPaid: true },
+        { status: 409 }
       );
     }
 
-    if (await resolveUserAccess(user, token)) {
+    const user = await getUserFromRequest(request);
+    const token = getTokenFromRequest(request);
+    if (user && (await resolveUserAccess(user, token))) {
       return NextResponse.json(
         { error: 'You already have access for this event', alreadyPaid: true },
         { status: 409 }
@@ -100,10 +103,16 @@ export async function POST(request: Request) {
     }
 
     const payload = (await request.json().catch(() => ({}))) as {
+      email?: string;
       promotionCode?: string;
     };
-    const promotionCodeInput = payload.promotionCode?.trim() ?? '';
 
+    const guestEmail = payload.email?.trim().toLowerCase() ?? '';
+    if (guestEmail && !isValidEmail(guestEmail)) {
+      return NextResponse.json({ error: 'Enter a valid email' }, { status: 400 });
+    }
+
+    const promotionCodeInput = payload.promotionCode?.trim() ?? '';
     let promotionCodeId: string | null = null;
     if (promotionCodeInput) {
       promotionCodeId = await resolvePromotionCodeId(promotionCodeInput);
@@ -127,18 +136,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const origin =
-      process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+    const checkoutEmail = user?.email ?? (guestEmail || undefined);
+    let userId = user?.id ?? null;
+    if (!userId && checkoutEmail) {
+      userId = await ensureUserForCheckout(checkoutEmail);
+    }
+
+    const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
     const stripe = getStripe();
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       excluded_payment_method_types: [...STRIPE_EXCLUDED_PAYMENT_METHODS],
       wallet_options: STRIPE_WALLET_OPTIONS,
-      customer_email: user.email ?? undefined,
-      client_reference_id: user.id,
+      customer_email: checkoutEmail,
+      client_reference_id: userId ?? undefined,
       metadata: {
-        user_id: user.id,
+        guest: user ? '0' : '1',
+        ...(userId ? { user_id: userId } : {}),
         ...(promotionCodeInput ? { promotion_code: promotionCodeInput } : {}),
       },
       line_items: [{ quantity: 1, price: priceId }],

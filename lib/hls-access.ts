@@ -29,7 +29,6 @@ export function isAllowedStreamTarget(targetUrl: string, mainStream: string): bo
       main.hostname.endsWith('.videodelivery.net') ||
       main.hostname === 'videodelivery.net';
 
-    // Cloudflare encodes tracks under different path IDs — same customer host is enough.
     if (isCloudflareStream) {
       return target.hostname === main.hostname;
     }

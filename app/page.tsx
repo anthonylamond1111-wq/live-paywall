@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import type { Session } from '@supabase/supabase-js';
 import AddToHomeScreen from '@/components/AddToHomeScreen';
 import BrandIntro from '@/components/BrandIntro';
 import BrandLogo from '@/components/BrandLogo';
@@ -18,6 +19,11 @@ import { isSiteAdmin } from '@/lib/site-admin';
 
 type View = 'loading' | 'landing' | 'stream';
 
+function authHeaders(session: Session | null): HeadersInit {
+  if (!session?.access_token) return {};
+  return { Authorization: `Bearer ${session.access_token}` };
+}
+
 export default function UFCAccess() {
   const [view, setView] = useState<View>('loading');
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
@@ -29,10 +35,14 @@ export default function UFCAccess() {
     return sessionStorage.getItem('ufc_preview_expired') === '1';
   });
   const [previewLive, setPreviewLive] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
   const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
 
-  const loadStream = useCallback(async () => {
-    const res = await fetch('/api/stream', { credentials: 'include' });
+  const loadStream = useCallback(async (activeSession?: Session | null) => {
+    const res = await fetch('/api/stream', {
+      credentials: 'include',
+      headers: authHeaders(activeSession ?? session),
+    });
     const data = (await res.json().catch(() => ({}))) as {
       url?: string;
       error?: string;
@@ -51,9 +61,9 @@ export default function UFCAccess() {
     setStreamUrl(data.url);
     setView('stream');
     return true;
-  }, []);
+  }, [session]);
 
-  const checkAccess = useCallback(async () => {
+  const checkAccess = useCallback(async (activeSession: Session | null) => {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');
     const canceled = params.get('canceled');
@@ -67,7 +77,10 @@ export default function UFCAccess() {
       const verifyRes = await fetch('/api/verify', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(activeSession),
+        },
         body: JSON.stringify({ sessionId }),
       });
       const verified = await verifyRes.json().catch(() => ({}));
@@ -75,7 +88,7 @@ export default function UFCAccess() {
       if (verifyRes.ok && verified.paid) {
         window.history.replaceState({}, '', window.location.pathname);
         trackAnalytics(AnalyticsEvents.PURCHASE);
-        await loadStream();
+        await loadStream(activeSession);
         return;
       }
 
@@ -88,11 +101,14 @@ export default function UFCAccess() {
       setMessage('Payment could not be verified. Try Restore access with your email.');
     }
 
-    const accessRes = await fetch('/api/access', { credentials: 'include' });
+    const accessRes = await fetch('/api/access', {
+      credentials: 'include',
+      headers: authHeaders(activeSession),
+    });
     const access = await accessRes.json().catch(() => ({}));
 
     if (accessRes.ok && access.paid) {
-      await loadStream();
+      await loadStream(activeSession);
       return;
     }
 
@@ -100,18 +116,44 @@ export default function UFCAccess() {
   }, [loadStream]);
 
   useEffect(() => {
-    void checkAccess();
-  }, [checkAccess]);
-
-  useEffect(() => {
     const supabase = getSupabaseClient();
+    let cancelled = false;
+
+    async function boot() {
+      let activeSession: Session | null = null;
+
+      if (supabase) {
+        const { data } = await supabase.auth.getSession();
+        activeSession = data.session ?? null;
+        if (!cancelled) {
+          setSession(activeSession);
+          const mail = activeSession?.user.email ?? null;
+          setOwnerEmail(isSiteAdmin(mail) ? mail : null);
+        }
+      }
+
+      if (!cancelled) {
+        await checkAccess(activeSession);
+      }
+    }
+
+    void boot();
+
     if (!supabase) return;
 
-    supabase.auth.getSession().then(({ data }) => {
-      const mail = data.session?.user.email ?? null;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next);
+      const mail = next?.user.email ?? null;
       setOwnerEmail(isSiteAdmin(mail) ? mail : null);
     });
-  }, []);
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [checkAccess]);
 
   const handleCheckout = useCallback(async () => {
     if (!email.trim()) {
@@ -127,7 +169,10 @@ export default function UFCAccess() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(session),
+        },
         body: JSON.stringify({
           email: email.trim(),
         }),
@@ -136,7 +181,7 @@ export default function UFCAccess() {
 
       if (res.status === 409 && data.alreadyPaid) {
         setMessage('This device already has access.');
-        await loadStream();
+        await loadStream(session);
         return;
       }
 
@@ -152,12 +197,12 @@ export default function UFCAccess() {
     } finally {
       setBusy(false);
     }
-  }, [email, loadStream]);
+  }, [email, loadStream, session]);
 
   const handleRestored = useCallback(async () => {
     setMessage('');
-    await loadStream();
-  }, [loadStream]);
+    await loadStream(session);
+  }, [loadStream, session]);
 
   const handlePreviewExpired = useCallback(() => {
     setPreviewExpired(true);
@@ -223,7 +268,9 @@ export default function UFCAccess() {
           />
         )}
 
-        {view === 'stream' && streamUrl && <StreamView streamUrl={streamUrl} />}
+        {view === 'stream' && streamUrl && (
+          <StreamView session={session} streamUrl={streamUrl} />
+        )}
 
         {view !== 'stream' && (
           <div className={view === 'landing' ? '' : LANDING_FUNNEL_WIDTH}>

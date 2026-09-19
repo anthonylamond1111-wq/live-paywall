@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getHlsPlaylistPath } from '@/lib/hls-access';
 import { getStreamUrl } from '@/lib/constants';
 import { hasPaidAccess } from '@/lib/access-cookie';
+import { attachStreamAccessCookies } from '@/lib/stream-grant-cookie';
 import {
   getTokenFromRequest,
   getUserFromRequest,
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ url: `${origin}${getHlsPlaylistPath()}`, guest: true });
   }
 
-  const user = await getUserFromRequest(request);
+  const user = await getUserFromRequest(request, { skipSessionCheck: true });
   if (user) {
     const token = getTokenFromRequest(request);
     const paid = await resolveUserAccess(user, token);
@@ -39,7 +40,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Payment required' }, { status: 402 });
     }
     const origin = getRequestOrigin(request);
-    return NextResponse.json({ url: `${origin}${getHlsPlaylistPath()}` });
+    const response = NextResponse.json({ url: `${origin}${getHlsPlaylistPath()}` });
+    await attachStreamAccessCookies(response, user);
+    return response;
   }
 
   return NextResponse.json({ error: 'Payment required' }, { status: 402 });

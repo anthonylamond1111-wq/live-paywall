@@ -21,10 +21,23 @@ export type FAQItem = {
   a: string;
 };
 
-/** UFC 331 main card — Crypto.com Arena (9:00 PM EDT = 2:00 AM UK). */
-const DEFAULT_EVENT_START = '2026-09-20T01:00:00.000Z';
+/** Stream go-live — Saturday 10:30 PM UK (BST = UTC+1). */
+const DEFAULT_EVENT_START = '2026-09-19T21:30:00.000Z';
 const configuredEventStart =
   process.env.NEXT_PUBLIC_EVENT_START_ISO ?? DEFAULT_EVENT_START;
+
+function resolveStreamStart(iso: string) {
+  // Ignore stale Railway/env times from earlier events.
+  if (
+    iso.includes('2026-08-15') ||
+    iso.includes('2026-09-12') ||
+    iso.includes('2026-09-13') ||
+    iso.includes('2026-09-20T01:00')
+  ) {
+    return DEFAULT_EVENT_START;
+  }
+  return iso;
+}
 
 export const EVENT = {
   number: 'Tsarukyan vs Ruffy',
@@ -32,13 +45,8 @@ export const EVENT = {
   fighter1: 'TSARUKYAN',
   fighter2: 'RUFFY',
   venue: 'Crypto.com Arena, Los Angeles',
-  streamStart: configuredEventStart.includes('2026-08-15')
-    ? DEFAULT_EVENT_START
-    : configuredEventStart.includes('2026-09-12') ||
-        configuredEventStart.includes('2026-09-13')
-      ? DEFAULT_EVENT_START
-      : configuredEventStart,
-  streamStartLabel: 'Sunday 2:00 AM (UK)',
+  streamStart: resolveStreamStart(configuredEventStart),
+  streamStartLabel: 'Saturday 10:30 PM (UK)',
   replayMessage:
     'Your access includes the full live event. Replay available for 24 hours after the broadcast ends.',
   liveUpdateMessage: process.env.NEXT_PUBLIC_LIVE_UPDATE_MESSAGE ?? '',
@@ -111,7 +119,7 @@ export const EVENT = {
     },
     {
       q: 'When does the stream start?',
-      a: 'The broadcast goes live around the UFC 331 main card (Sunday 2:00 AM UK). Join early — the player connects when we go live.',
+      a: 'The broadcast goes live at Saturday 10:30 PM (UK). Join early — the player connects when we go live.',
     },
   ] satisfies FAQItem[],
 } as const;

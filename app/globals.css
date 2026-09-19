@@ -288,6 +288,26 @@ body {
   );
 }
 
+.preview-locked-stream {
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-locked-stream video {
+  filter: blur(28px) brightness(0.55) saturate(0.7);
+  transform: scale(1.12);
+  transform-origin: center;
+}
+
+.preview-locked-stream::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: rgba(0, 0, 0, 0.25);
+}
+
 @keyframes chat-glove-punch {
   0%,
   100% {

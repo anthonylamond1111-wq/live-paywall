@@ -46,12 +46,13 @@ export default function PreviewConversion({
         </p>
         <h2 className="mt-2 text-xl font-bold text-white sm:text-2xl">
           {variant === 'expired'
-            ? 'Unlock the full live stream'
+            ? 'Unlock clear video + audio'
             : 'Ready to watch the full event?'}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-gray-400">
-          No signup. Pay once and this device keeps access. Restore on a new device with
-          your receipt email — that kicks the old device.
+          {variant === 'expired'
+            ? 'Preview is locked. Pay once for sharp HD and full sound on this device — no account needed.'
+            : 'No signup. Pay once and this device keeps access. Restore on a new device with your receipt email — that kicks the old device.'}
         </p>
         <p className="mt-3 text-lg font-semibold text-white">{EVENT.priceLabel}</p>
       </div>

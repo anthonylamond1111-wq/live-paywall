@@ -43,13 +43,12 @@ export function isPreviewActive(cookieHeader: string | null): boolean {
   return getPreviewRemainingSeconds(startedAt) > 0;
 }
 
+/**
+ * Preview session keeps HLS proxy access after the free timer so the client can
+ * show a blurred/muted teaser. Clear video + audio still require paid cookies.
+ */
 export function canAccessPreviewStream(cookieHeader: string | null): boolean {
-  if (!hasPreviewSession(cookieHeader)) return false;
-
-  const startedAt = getPreviewStartFromCookie(cookieHeader);
-  if (!startedAt) return true;
-
-  return getPreviewRemainingSeconds(startedAt) > 0;
+  return hasPreviewSession(cookieHeader);
 }
 
 export function previewSessionCookieOptions() {
@@ -67,7 +66,8 @@ export function previewStartCookieOptions() {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
-    maxAge: PREVIEW_SECONDS + 60,
+    // Keep start timestamp for the event window so we know preview is expired.
+    maxAge: PREVIEW_SESSION_MAX_AGE,
     path: '/',
   };
 }

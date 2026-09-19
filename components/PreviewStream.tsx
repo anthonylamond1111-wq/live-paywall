@@ -37,10 +37,25 @@ export default function PreviewStream({
   const [connectTimedOut, setConnectTimedOut] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const previewStartedRef = useRef(false);
+  const expiredTrackedRef = useRef(false);
   const fullscreenRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { enter: enterNativeFullscreen, exit: exitNativeFullscreen } =
     useStreamFullscreen(fullscreenRef, videoRef);
+
+  const markExpired = useCallback(
+    (track = true) => {
+      sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
+      setExpired(true);
+      setRemaining(0);
+      if (track && !expiredTrackedRef.current) {
+        expiredTrackedRef.current = true;
+        trackAnalytics(AnalyticsEvents.PREVIEW_EXPIRED);
+        onPreviewExpired?.();
+      }
+    },
+    [onPreviewExpired]
+  );
 
   const startPreviewTimer = useCallback(async () => {
     if (previewStartedRef.current) return;
@@ -56,15 +71,16 @@ export default function PreviewStream({
       });
       const data = await res.json().catch(() => ({}));
 
-      if (res.status === 403 && data.expired) {
-        sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
-        setExpired(true);
-        setRemaining(0);
-        setPreviewUrl(null);
+      if (!res.ok) {
+        previewStartedRef.current = false;
         return;
       }
 
-      if (!res.ok) return;
+      if (data.expired) {
+        if (data.url) setPreviewUrl(data.url);
+        markExpired(true);
+        return;
+      }
 
       sessionStorage.setItem(PREVIEW_START_KEY, String(Date.now()));
       trackAnalytics(AnalyticsEvents.PREVIEW_STARTED);
@@ -76,7 +92,7 @@ export default function PreviewStream({
     } catch {
       previewStartedRef.current = false;
     }
-  }, []);
+  }, [markExpired]);
 
   const handleLiveChange = useCallback(
     (live: boolean) => {
@@ -98,24 +114,20 @@ export default function PreviewStream({
 
         if (!active) return;
 
-        if (res.status === 403 && data.expired) {
-          sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
-          setExpired(true);
-          setRemaining(0);
-          return;
-        }
-
         if (!res.ok) {
           setLoadError(data.error ?? 'Preview unavailable right now.');
           return;
         }
 
-        const { url, seconds, started } = data as {
+        const { url, seconds, started, expired: alreadyExpired } = data as {
           url?: string;
           seconds?: number;
           started?: boolean;
+          expired?: boolean;
         };
         const left = typeof seconds === 'number' ? seconds : PREVIEW_SECONDS;
+
+        if (url) setPreviewUrl(url);
 
         if (started) {
           previewStartedRef.current = true;
@@ -125,14 +137,11 @@ export default function PreviewStream({
           }
         }
 
-        if (left <= 0) {
-          sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
-          setExpired(true);
-          setRemaining(0);
+        if (alreadyExpired || left <= 0 || sessionStorage.getItem(PREVIEW_EXPIRED_KEY) === '1') {
+          markExpired(false);
           return;
         }
 
-        if (url) setPreviewUrl(url);
         setRemaining(left);
       } finally {
         if (active) setLoading(false);
@@ -143,7 +152,7 @@ export default function PreviewStream({
     return () => {
       active = false;
     };
-  }, []);
+  }, [markExpired]);
 
   const { isBeforeStart } = useStreamSchedule();
 
@@ -163,11 +172,7 @@ export default function PreviewStream({
     const timer = window.setInterval(() => {
       setRemaining((current) => {
         if (current <= 1) {
-          sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
-          setExpired(true);
-          setPreviewUrl(null);
-          trackAnalytics(AnalyticsEvents.PREVIEW_EXPIRED);
-          onPreviewExpired?.();
+          markExpired(true);
           return 0;
         }
         return current - 1;
@@ -175,7 +180,7 @@ export default function PreviewStream({
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [expired, previewUrl, countdownActive, onPreviewExpired]);
+  }, [expired, previewUrl, countdownActive, markExpired]);
 
   const urgent = remaining <= 15 && !expired && countdownActive;
   const previewActive = isLive && !expired && countdownActive;
@@ -245,13 +250,15 @@ export default function PreviewStream({
           <div className="flex items-center gap-2">
             <span className="preview-live-dot h-2 w-2 rounded-full bg-red-500" />
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-400">
-              Free preview
+              {expired ? 'Preview locked' : 'Free preview'}
             </p>
           </div>
           <p className="mt-1 text-sm text-gray-400">
-            {previewActive
-              ? `${formatPreviewDuration(true)} free — see the live stream for yourself`
-              : 'Free preview starts when the broadcast goes live'}
+            {expired
+              ? 'Stream still live — pay once for clear video + audio'
+              : previewActive
+                ? `${formatPreviewDuration(true)} free — see the live stream for yourself`
+                : 'Free preview starts when the broadcast goes live'}
           </p>
         </div>
         {previewActive && !loading && (
@@ -271,7 +278,7 @@ export default function PreviewStream({
       {isFullscreen && (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between bg-gradient-to-b from-black/80 to-transparent p-[max(0.75rem,env(safe-area-inset-top))_1rem_2rem]">
           <div className="pointer-events-auto rounded-md bg-black/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-200 ring-1 ring-white/10 backdrop-blur-sm">
-            Free preview
+            {expired ? 'Preview locked' : 'Free preview'}
             {previewActive && (
               <span className="ml-2 font-mono text-red-300">{formatCountdown(remaining)} left</span>
             )}
@@ -305,24 +312,28 @@ export default function PreviewStream({
             </div>
           )}
 
-          {!loading && loadError && !expired && (
+          {!loading && loadError && !previewUrl && (
             <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-gradient-to-b from-zinc-950 to-black px-6 text-center">
               <p className="text-lg font-semibold text-white">Preview unavailable</p>
               <p className="text-sm text-gray-400">{loadError}</p>
             </div>
           )}
 
-          {!loading && previewUrl && !expired && (
+          {!loading && previewUrl && (
             <>
-              <StreamPlayer
-                src={previewUrl}
-                fill={isFullscreen}
-                videoRef={videoRef}
-                isFullscreen={isFullscreen}
-                onFullscreenToggle={handleFullscreenToggle}
-                onLiveChange={handleLiveChange}
-              />
-              {!isLive && (
+              <div className={expired ? 'preview-locked-stream' : undefined}>
+                <StreamPlayer
+                  src={previewUrl}
+                  fill={isFullscreen}
+                  videoRef={videoRef}
+                  isFullscreen={isFullscreen}
+                  onFullscreenToggle={handleFullscreenToggle}
+                  onLiveChange={handleLiveChange}
+                  forceMuted={expired}
+                  showCastButton={false}
+                />
+              </div>
+              {!isLive && !expired && (
                 <div
                   className={`absolute inset-0 z-10 overflow-hidden ${
                     isFullscreen ? 'rounded-none' : 'rounded-2xl sm:rounded-3xl'
@@ -342,7 +353,7 @@ export default function PreviewStream({
           )}
 
           {!loading && expired && (
-            <div className="preview-ended flex aspect-video flex-col items-center justify-center gap-4 bg-gradient-to-b from-zinc-950 via-black to-black px-6 text-center">
+            <div className="preview-ended absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/55 px-6 text-center">
               <div className="preview-lock-icon flex h-16 w-16 items-center justify-center rounded-full">
                 <svg className="h-8 w-8 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
@@ -355,8 +366,8 @@ export default function PreviewStream({
               </div>
               <div>
                 <p className="text-xl font-bold text-white sm:text-2xl">Preview ended</p>
-                <p className="mt-2 max-w-sm text-sm leading-relaxed text-gray-400">
-                  Pay once to keep watching on this device — no account needed.
+                <p className="mt-2 max-w-sm text-sm leading-relaxed text-gray-300">
+                  The fight is still going — pay once for clear HD and full audio on this device.
                 </p>
               </div>
               <button
@@ -377,7 +388,7 @@ export default function PreviewStream({
               {urgent && (
                 <div className="pointer-events-none absolute inset-x-0 top-12 z-20 flex justify-center px-4">
                   <div className="rounded-full bg-red-600/95 px-4 py-2 text-xs font-semibold text-white shadow-[0_0_24px_rgba(220,38,38,0.5)]">
-                    Preview ends in {formatCountdown(remaining)} — sign up to keep watching
+                    Preview ends in {formatCountdown(remaining)} — pay to keep watching clear
                   </div>
                 </div>
               )}

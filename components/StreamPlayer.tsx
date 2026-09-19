@@ -32,6 +32,8 @@ type StreamPlayerProps = {
   onLiveChange?: (live: boolean) => void;
   onHealthChange?: (status: StreamHealthStatus) => void;
   showCastButton?: boolean;
+  /** Keep audio off permanently (locked preview teaser). */
+  forceMuted?: boolean;
 };
 
 function assignVideoRef(
@@ -55,6 +57,7 @@ export default function StreamPlayer({
   onLiveChange,
   onHealthChange,
   showCastButton = false,
+  forceMuted = false,
 }: StreamPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -115,6 +118,34 @@ export default function StreamPlayer({
         document.pictureInPictureEnabled
     );
   }, []);
+
+  useEffect(() => {
+    if (!forceMuted) return;
+
+    setMuted(true);
+    setShowUnmute(false);
+    const video = videoRef.current;
+    if (video) video.muted = true;
+
+    const enforceMute = () => {
+      const node = videoRef.current;
+      if (!node) return;
+      if (!node.muted) {
+        node.muted = true;
+        setMuted(true);
+      }
+      node.volume = 0;
+    };
+
+    enforceMute();
+    const timer = window.setInterval(enforceMute, 400);
+    video?.addEventListener('volumechange', enforceMute);
+
+    return () => {
+      window.clearInterval(timer);
+      video?.removeEventListener('volumechange', enforceMute);
+    };
+  }, [forceMuted, src]);
 
   useEffect(() => {
     if (!showCastButton) {
@@ -344,6 +375,7 @@ export default function StreamPlayer({
   }, [src, onLiveChange, onHealthChange, accessToken, reconnectToken, markLive, showStreamError]);
 
   const handleUnmute = () => {
+    if (forceMuted) return;
     const video = videoRef.current;
     if (!video) return;
     video.muted = false;
@@ -353,6 +385,7 @@ export default function StreamPlayer({
   };
 
   const toggleMute = () => {
+    if (forceMuted) return;
     const video = videoRef.current;
     if (!video) return;
     video.muted = !video.muted;
@@ -422,7 +455,7 @@ export default function StreamPlayer({
         onClick={togglePlay}
       />
 
-      {showUnmute && !error && (
+      {showUnmute && !error && !forceMuted && (
         <button
           type="button"
           onClick={handleUnmute}
@@ -482,8 +515,9 @@ export default function StreamPlayer({
           <button
             type="button"
             onClick={toggleMute}
-            className="rounded-lg p-2 text-white transition hover:bg-white/10"
-            aria-label={muted ? 'Unmute' : 'Mute'}
+            disabled={forceMuted}
+            className="rounded-lg p-2 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label={forceMuted ? 'Audio locked' : muted ? 'Unmute' : 'Mute'}
           >
             {muted ? (
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

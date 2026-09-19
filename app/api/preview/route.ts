@@ -32,19 +32,17 @@ function previewPlaylistUrl(request: Request): string {
 export async function GET(request: Request) {
   const cookieHeader = request.headers.get('cookie');
   const startedAt = getPreviewStartFromCookie(cookieHeader);
-
-  if (startedAt && getPreviewRemainingSeconds(startedAt) <= 0) {
-    return NextResponse.json(
-      { error: 'Preview expired', expired: true, seconds: 0 },
-      { status: 403 }
-    );
-  }
+  const remaining = startedAt
+    ? getPreviewRemainingSeconds(startedAt)
+    : PREVIEW_SECONDS;
+  const expired = Boolean(startedAt && remaining <= 0);
 
   const origin = getRequestOrigin(request);
   const response = NextResponse.json({
     url: `${origin}${getHlsPlaylistPath()}`,
-    seconds: startedAt ? getPreviewRemainingSeconds(startedAt) : PREVIEW_SECONDS,
+    seconds: expired ? 0 : remaining,
     started: Boolean(startedAt),
+    expired,
   });
 
   if (!hasPreviewSession(cookieHeader)) {
@@ -64,17 +62,13 @@ export async function POST(request: Request) {
   const existingStart = getPreviewStartFromCookie(cookieHeader);
   if (existingStart) {
     const remaining = getPreviewRemainingSeconds(existingStart);
-    if (remaining <= 0) {
-      return NextResponse.json(
-        { error: 'Preview expired', expired: true, seconds: 0 },
-        { status: 403 }
-      );
-    }
+    const expired = remaining <= 0;
 
     return NextResponse.json({
       url: previewPlaylistUrl(request),
-      seconds: remaining,
+      seconds: expired ? 0 : remaining,
       started: true,
+      expired,
     });
   }
 

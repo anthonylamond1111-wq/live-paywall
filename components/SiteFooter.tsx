@@ -22,7 +22,7 @@ export default function SiteFooter() {
         </a>
       </div>
       <p className="mt-4 text-[10px] text-gray-600">
-        © {year} {SITE_NAME}. Private live stream access. Not affiliated with UFC, Zuffa Boxing, or any official broadcast partner.
+        © {year} {SITE_NAME}. Private live stream access. Not affiliated with UFC or any official broadcast partner.
       </p>
     </footer>
   );

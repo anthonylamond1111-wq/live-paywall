@@ -18,7 +18,7 @@ export default function ShareButton({ variant = 'default', className = '' }: Sha
     const url = EVENT.siteUrl;
     const text =
       variant === 'promo'
-        ? `${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}. ${formatPreviewDuration(true)} free preview, then £2.50 for full HD + live chat.`
+        ? `${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}. ${formatPreviewDuration(true)} free preview, then ${EVENT.priceLabel.replace(/^Pay\s+/i, '')} for full HD + live chat.`
         : `${EVENT.number} — ${EVENT.fighter1} vs ${EVENT.fighter2}. Watch live on ${SITE_NAME}.`;
 
     trackAnalytics(AnalyticsEvents.SHARE, { variant });

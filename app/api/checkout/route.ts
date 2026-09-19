@@ -28,6 +28,7 @@ function isStripeTestMode() {
 
 const LIVE_PRODUCT_FALLBACK = 'prod_V4vYaTX0Q3L8RO';
 const TEST_PRODUCT_FALLBACK = 'prod_Ur1ON2doXy6N8B';
+const LIVE_PRICE_FALLBACK = 'price_1U4lh3C2vh9jCnpmysfjdndg';
 
 function getProductIdCandidates(): string[] {
   const configured = isStripeTestMode()
@@ -56,7 +57,7 @@ async function resolvePriceId(): Promise<string | null> {
 
   const fallbackPriceId = isStripeTestMode()
     ? process.env.STRIPE_TEST_PRICE_ID
-    : process.env.STRIPE_LIVE_PRICE_ID;
+    : process.env.STRIPE_LIVE_PRICE_ID ?? LIVE_PRICE_FALLBACK;
 
   return fallbackPriceId ?? null;
 }

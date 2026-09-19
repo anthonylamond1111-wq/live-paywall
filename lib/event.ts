@@ -21,20 +21,24 @@ export type FAQItem = {
   a: string;
 };
 
-const DEFAULT_EVENT_START = '2026-09-12T23:00:00.000Z';
+/** UFC 331 main card — Crypto.com Arena (9:00 PM EDT = 2:00 AM UK). */
+const DEFAULT_EVENT_START = '2026-09-20T01:00:00.000Z';
 const configuredEventStart =
   process.env.NEXT_PUBLIC_EVENT_START_ISO ?? DEFAULT_EVENT_START;
 
 export const EVENT = {
-  number: 'Garcia vs Benn',
-  tagline: 'WBC WELTERWEIGHT TITLE',
-  fighter1: 'GARCIA',
-  fighter2: 'BENN',
-  venue: 'T-Mobile Arena, Las Vegas',
+  number: 'Tsarukyan vs Ruffy',
+  tagline: 'UFC 331 · LIGHTWEIGHT',
+  fighter1: 'TSARUKYAN',
+  fighter2: 'RUFFY',
+  venue: 'Crypto.com Arena, Los Angeles',
   streamStart: configuredEventStart.includes('2026-08-15')
     ? DEFAULT_EVENT_START
-    : configuredEventStart,
-  streamStartLabel: 'Sunday 12:00 AM (UK)',
+    : configuredEventStart.includes('2026-09-12') ||
+        configuredEventStart.includes('2026-09-13')
+      ? DEFAULT_EVENT_START
+      : configuredEventStart,
+  streamStartLabel: 'Sunday 2:00 AM (UK)',
   replayMessage:
     'Your access includes the full live event. Replay available for 24 hours after the broadcast ends.',
   liveUpdateMessage: process.env.NEXT_PUBLIC_LIVE_UPDATE_MESSAGE ?? '',
@@ -42,39 +46,52 @@ export const EVENT = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.ufcaccess.co.uk',
   priceLabel: process.env.NEXT_PUBLIC_CHECKOUT_LABEL ?? 'Pay £2.50 to Join Live',
   fighter1Stats: {
-    name: 'Ryan Garcia',
-    nickname: 'KingRy',
-    record: '25–2',
-    height: "5'10\"",
-    reach: '70.5"',
+    name: 'Arman Tsarukyan',
+    nickname: 'Ahalkalakets',
+    record: '23–3',
+    height: `5'7"`,
+    reach: '72"',
     stance: 'Orthodox',
-    country: 'USA',
+    country: 'Armenia',
   } satisfies FighterStats,
   fighter2Stats: {
-    name: 'Conor Benn',
-    nickname: 'The Destroyer',
-    record: '25–1',
-    height: "5'9\"",
-    reach: '67"',
+    name: 'Mauricio Ruffy',
+    nickname: 'The Assassin',
+    record: '14–2',
+    height: `5'11"`,
+    reach: '74"',
     stance: 'Orthodox',
-    country: 'UK',
+    country: 'Brazil',
   } satisfies FighterStats,
   fightCard: [
-    { fighters: 'Ryan Garcia vs Conor Benn', weight: 'WBC Welterweight Title', main: true },
-    { fighters: 'Jose Ramirez vs Vlad Panin', weight: 'Super Lightweight' },
-    { fighters: 'Noel Mikaelian vs Raphael Akpejiori', weight: 'Heavyweight' },
-    { fighters: 'Damazion Vanhouter vs TBA', weight: 'Heavyweight' },
+    {
+      fighters: 'Arman Tsarukyan vs Mauricio Ruffy',
+      weight: 'Lightweight',
+      main: true,
+    },
+    {
+      fighters: 'Joshua Van vs Alexandre Pantoja',
+      weight: 'Flyweight Title',
+    },
+    {
+      fighters: 'Patricio Freire vs Doo Ho Choi',
+      weight: 'Featherweight',
+    },
+    {
+      fighters: 'Gable Steveson vs Sean Sharaf',
+      weight: 'Heavyweight',
+    },
   ] satisfies FightBout[],
   perks: [
     'Full HD live stream',
     'Live chat with paid viewers',
     'Watch on phone, tablet & desktop',
-    'Access saved to your account',
+    'Access saved on this device',
   ],
   faq: [
     {
       q: 'Is this the official broadcast?',
-      a: `No — ${SITE_NAME} is an independent private live stream. We are not affiliated with any official broadcast partner. You get our HD feed and live chat for a one-time fee.`,
+      a: `No — ${SITE_NAME} is an independent private live stream. We are not affiliated with UFC or any official broadcast partner. You get our HD feed and live chat for a one-time fee.`,
     },
     {
       q: 'Will it work on my phone or TV?',
@@ -82,19 +99,19 @@ export const EVENT = {
     },
     {
       q: 'What if the stream drops?',
-      a: 'The player reconnects automatically. If issues persist, refresh the page while logged in — your access is saved to your account.',
+      a: 'Use Reconnect on the player if needed. Your paid access stays on this device — restore on a new device with your receipt email.',
     },
     {
       q: 'Can I get a refund?',
       a: 'If the stream is unavailable for a significant portion of the event due to a fault on our side, contact support within 24 hours for a refund review.',
     },
     {
-      q: 'Do I need to stay logged in?',
-      a: 'Log in once with the same email you used at checkout. Your purchase stays on your account for the event.',
+      q: 'Do I need an account?',
+      a: 'No account needed. Pay once and this device keeps access. Restore anytime with the same email from your Stripe receipt.',
     },
     {
       q: 'When does the stream start?',
-      a: 'The broadcast goes live at the scheduled start time shown on this page. You can join early — the player will connect when we go live.',
+      a: 'The broadcast goes live around the UFC 331 main card (Sunday 2:00 AM UK). Join early — the player connects when we go live.',
     },
   ] satisfies FAQItem[],
 } as const;

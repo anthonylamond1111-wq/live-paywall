@@ -16,11 +16,11 @@ export default function TermsPage() {
             access, you agree to use the service for personal viewing only.
           </p>
           <p>
-            Streams may not be recorded, redistributed, or rebroadcast. Access is tied to your
-            account and may not be shared.
+            Streams may not be recorded, redistributed, or rebroadcast. Access is saved on your
+            device after payment and may not be shared across multiple devices at once.
           </p>
           <p>
-            We are not affiliated with UFC, Zuffa Boxing, or any official broadcast partner. Service availability
+            We are not affiliated with UFC or any official broadcast partner. Service availability
             depends on technical conditions on event night.
           </p>
         </div>

@@ -1,2 +1,2 @@
-export const SITE_NAME = 'UFC Access X Boxing';
-export const SITE_NAME_DISPLAY = 'UFC ACCESS X BOXING';
+export const SITE_NAME = 'UFC Access';
+export const SITE_NAME_DISPLAY = 'UFC ACCESS';

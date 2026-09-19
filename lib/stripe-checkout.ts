@@ -8,14 +8,14 @@ const CHECKOUT_LOGO_FILE_ID =
   process.env.STRIPE_CHECKOUT_LOGO_FILE_ID ?? 'file_1UEvgpC2vh9jCnpmbhdaqaSw';
 
 export const STRIPE_CHECKOUT_PRODUCT = {
-  name: `${EVENT.number} — Live Stream Access`,
+  name: `${EVENT.fighter1Stats.name} vs ${EVENT.fighter2Stats.name}`,
   description: [
     `Unlock the full ${EVENT.fighter1Stats.name} vs ${EVENT.fighter2Stats.name} live broadcast.`,
     '',
     '• Full HD live stream',
     '• Live chat with paid viewers',
     '• Phone, tablet & TV',
-    '• Access saved to your account for tonight',
+    '• Access saved on this device',
     '',
     `${EVENT.tagline} · ${EVENT.venue}`,
   ].join('\n'),

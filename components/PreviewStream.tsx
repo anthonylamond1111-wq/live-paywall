@@ -48,6 +48,8 @@ export default function PreviewStream({
       sessionStorage.setItem(PREVIEW_EXPIRED_KEY, '1');
       setExpired(true);
       setRemaining(0);
+      setPreviewUrl(null);
+      setCountdownActive(false);
       if (track && !expiredTrackedRef.current) {
         expiredTrackedRef.current = true;
         trackAnalytics(AnalyticsEvents.PREVIEW_EXPIRED);
@@ -57,51 +59,12 @@ export default function PreviewStream({
     [onPreviewExpired]
   );
 
-  const startPreviewTimer = useCallback(async () => {
-    if (previewStartedRef.current) return;
-    if (typeof window === 'undefined') return;
-    if (sessionStorage.getItem(PREVIEW_EXPIRED_KEY) === '1') return;
-
-    previewStartedRef.current = true;
-
-    try {
-      const res = await fetch('/api/preview', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        previewStartedRef.current = false;
-        return;
-      }
-
-      if (data.expired) {
-        if (data.url) setPreviewUrl(data.url);
-        markExpired(true);
-        return;
-      }
-
-      sessionStorage.setItem(PREVIEW_START_KEY, String(Date.now()));
-      trackAnalytics(AnalyticsEvents.PREVIEW_STARTED);
-      setCountdownActive(true);
-
-      const seconds = typeof data.seconds === 'number' ? data.seconds : PREVIEW_SECONDS;
-      setRemaining(seconds);
-      if (data.url) setPreviewUrl(data.url);
-    } catch {
-      previewStartedRef.current = false;
-    }
-  }, [markExpired]);
-
   const handleLiveChange = useCallback(
     (live: boolean) => {
       setIsLive(live);
       onPreviewLiveChange?.(live);
-      if (!live) return;
-      void startPreviewTimer();
     },
-    [onPreviewLiveChange, startPreviewTimer]
+    [onPreviewLiveChange]
   );
 
   useEffect(() => {
@@ -109,6 +72,11 @@ export default function PreviewStream({
 
     const loadPreview = async () => {
       try {
+        if (sessionStorage.getItem(PREVIEW_EXPIRED_KEY) === '1') {
+          markExpired(false);
+          return;
+        }
+
         const res = await fetch('/api/preview', { credentials: 'include' });
         const data = await res.json().catch(() => ({}));
 
@@ -127,19 +95,22 @@ export default function PreviewStream({
         };
         const left = typeof seconds === 'number' ? seconds : PREVIEW_SECONDS;
 
+        if (alreadyExpired || left <= 0) {
+          markExpired(false);
+          return;
+        }
+
         if (url) setPreviewUrl(url);
 
         if (started) {
           previewStartedRef.current = true;
           setCountdownActive(true);
-          if (!sessionStorage.getItem(PREVIEW_START_KEY)) {
-            sessionStorage.setItem(PREVIEW_START_KEY, String(Date.now()));
+          const startedAt = Date.now() - (PREVIEW_SECONDS - left) * 1000;
+          sessionStorage.setItem(PREVIEW_START_KEY, String(startedAt));
+          if (!sessionStorage.getItem(PREVIEW_START_KEY + '_tracked')) {
+            sessionStorage.setItem(PREVIEW_START_KEY + '_tracked', '1');
+            trackAnalytics(AnalyticsEvents.PREVIEW_STARTED);
           }
-        }
-
-        if (alreadyExpired || left <= 0 || sessionStorage.getItem(PREVIEW_EXPIRED_KEY) === '1') {
-          markExpired(false);
-          return;
         }
 
         setRemaining(left);
@@ -166,21 +137,29 @@ export default function PreviewStream({
     return () => window.clearTimeout(timer);
   }, [isLive, previewUrl]);
 
+  // Wall-clock countdown from server start — survives tab sleep / laggy intervals.
   useEffect(() => {
-    if (expired || !previewUrl || !countdownActive) return;
+    if (expired || !countdownActive) return;
 
-    const timer = window.setInterval(() => {
-      setRemaining((current) => {
-        if (current <= 1) {
-          markExpired(true);
-          return 0;
-        }
-        return current - 1;
-      });
-    }, 1000);
+    const startedRaw = sessionStorage.getItem(PREVIEW_START_KEY);
+    const startedAt = startedRaw ? Number(startedRaw) : NaN;
+    if (!Number.isFinite(startedAt)) return;
 
+    const tick = () => {
+      const left = Math.max(
+        0,
+        PREVIEW_SECONDS - Math.floor((Date.now() - startedAt) / 1000)
+      );
+      setRemaining(left);
+      if (left <= 0) {
+        markExpired(true);
+      }
+    };
+
+    tick();
+    const timer = window.setInterval(tick, 250);
     return () => window.clearInterval(timer);
-  }, [expired, previewUrl, countdownActive, markExpired]);
+  }, [expired, countdownActive, markExpired]);
 
   const urgent = remaining <= 15 && !expired && countdownActive;
   const previewActive = isLive && !expired && countdownActive;
@@ -255,7 +234,7 @@ export default function PreviewStream({
           </div>
           <p className="mt-1 text-sm text-gray-400">
             {expired
-              ? 'Stream still live — pay once for clear video + audio'
+              ? 'Free preview over — pay to keep watching'
               : previewActive
                 ? `${formatPreviewDuration(true)} free — see the live stream for yourself`
                 : 'Free preview starts when the broadcast goes live'}
@@ -319,21 +298,18 @@ export default function PreviewStream({
             </div>
           )}
 
-          {!loading && previewUrl && (
+          {!loading && previewUrl && !expired && (
             <>
-              <div className={expired ? 'preview-locked-stream' : undefined}>
-                <StreamPlayer
-                  src={previewUrl}
-                  fill={isFullscreen}
-                  videoRef={videoRef}
-                  isFullscreen={isFullscreen}
-                  onFullscreenToggle={handleFullscreenToggle}
-                  onLiveChange={handleLiveChange}
-                  forceMuted={expired}
-                  showCastButton={false}
-                />
-              </div>
-              {!isLive && !expired && (
+              <StreamPlayer
+                src={previewUrl}
+                fill={isFullscreen}
+                videoRef={videoRef}
+                isFullscreen={isFullscreen}
+                onFullscreenToggle={handleFullscreenToggle}
+                onLiveChange={handleLiveChange}
+                showCastButton={false}
+              />
+              {!isLive && (
                 <div
                   className={`absolute inset-0 z-10 overflow-hidden ${
                     isFullscreen ? 'rounded-none' : 'rounded-2xl sm:rounded-3xl'
@@ -353,7 +329,11 @@ export default function PreviewStream({
           )}
 
           {!loading && expired && (
-            <div className="preview-ended preview-locked-overlay absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/60 px-6 text-center">
+            <div
+              className={`preview-ended relative flex aspect-video flex-col items-center justify-center gap-4 bg-gradient-to-b from-zinc-950 to-black px-6 text-center ${
+                isFullscreen ? 'h-full min-h-0 aspect-auto' : ''
+              }`}
+            >
               <div className="preview-lock-icon preview-lock-pulse flex h-16 w-16 items-center justify-center rounded-full">
                 <svg className="h-8 w-8 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
@@ -367,7 +347,7 @@ export default function PreviewStream({
               <div>
                 <p className="text-xl font-bold text-white sm:text-2xl">Preview ended</p>
                 <p className="mt-2 max-w-sm text-sm leading-relaxed text-gray-200">
-                  Still live — pay once for clear HD and full audio on this device.
+                  Free preview is over. Pay once for clear HD and full audio on this device.
                 </p>
               </div>
               <button

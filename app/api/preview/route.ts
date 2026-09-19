@@ -31,22 +31,39 @@ function previewPlaylistUrl(request: Request): string {
 
 export async function GET(request: Request) {
   const cookieHeader = request.headers.get('cookie');
-  const startedAt = getPreviewStartFromCookie(cookieHeader);
-  const remaining = startedAt
-    ? getPreviewRemainingSeconds(startedAt)
-    : PREVIEW_SECONDS;
-  const expired = Boolean(startedAt && remaining <= 0);
+  const existingStart = getPreviewStartFromCookie(cookieHeader);
 
-  const origin = getRequestOrigin(request);
+  // Hard cut: once the free window has ended, never hand out a playable URL again.
+  if (existingStart && getPreviewRemainingSeconds(existingStart) <= 0) {
+    const response = NextResponse.json({
+      seconds: 0,
+      started: true,
+      expired: true,
+    });
+    if (!hasPreviewSession(cookieHeader)) {
+      response.cookies.set(PREVIEW_SESSION_COOKIE, '1', previewSessionCookieOptions());
+    }
+    return response;
+  }
+
+  // Start the 90s clock on first preview load (not when "live" is detected).
+  const startedAt = existingStart ?? Date.now();
+  const remaining = existingStart
+    ? getPreviewRemainingSeconds(existingStart)
+    : PREVIEW_SECONDS;
+
   const response = NextResponse.json({
-    url: `${origin}${getHlsPlaylistPath()}`,
-    seconds: expired ? 0 : remaining,
-    started: Boolean(startedAt),
-    expired,
+    url: previewPlaylistUrl(request),
+    seconds: remaining,
+    started: true,
+    expired: false,
   });
 
   if (!hasPreviewSession(cookieHeader)) {
     response.cookies.set(PREVIEW_SESSION_COOKIE, '1', previewSessionCookieOptions());
+  }
+  if (!existingStart) {
+    response.cookies.set(PREVIEW_START_COOKIE, String(startedAt), previewStartCookieOptions());
   }
 
   return response;
@@ -65,7 +82,7 @@ export async function POST(request: Request) {
     const expired = remaining <= 0;
 
     return NextResponse.json({
-      url: previewPlaylistUrl(request),
+      url: expired ? undefined : previewPlaylistUrl(request),
       seconds: expired ? 0 : remaining,
       started: true,
       expired,
@@ -77,6 +94,7 @@ export async function POST(request: Request) {
     url: previewPlaylistUrl(request),
     seconds: PREVIEW_SECONDS,
     started: true,
+    expired: false,
   });
 
   response.cookies.set(PREVIEW_START_COOKIE, String(startedAt), previewStartCookieOptions());

@@ -25,9 +25,22 @@ function toAbsoluteUrl(uri: string, base: string) {
   return uri.startsWith('http') ? uri : new URL(uri, base).toString();
 }
 
-/** Point playlists at Cloudflare/Livepeer directly — only the entry manifest hits Railway for auth. */
-function rewritePlaylist(body: string, sourceUrl: string) {
+function isPlaylistUri(uri: string) {
+  const path = uri.split('?')[0]?.toLowerCase() ?? '';
+  return path.endsWith('.m3u8');
+}
+
+/**
+ * Nested playlists go back through our auth proxy so preview access can be
+ * revoked after 90s. Media segments stay on the CDN for performance.
+ */
+function rewritePlaylist(body: string, sourceUrl: string, proxyPath: string) {
   const base = sourceUrl.substring(0, sourceUrl.lastIndexOf('/') + 1);
+
+  const viaProxy = (absolute: string) => {
+    if (!isPlaylistUri(absolute)) return absolute;
+    return `${proxyPath}?url=${encodeURIComponent(absolute)}`;
+  };
 
   return body
     .split('\n')
@@ -38,11 +51,11 @@ function rewritePlaylist(body: string, sourceUrl: string) {
       if (trimmed.startsWith('#')) {
         if (!trimmed.includes('URI="')) return line;
         return line.replace(/URI="([^"]+)"/g, (_match, uri: string) => {
-          return `URI="${toAbsoluteUrl(uri, base)}"`;
+          return `URI="${viaProxy(toAbsoluteUrl(uri, base))}"`;
         });
       }
 
-      return toAbsoluteUrl(trimmed, base);
+      return viaProxy(toAbsoluteUrl(trimmed, base));
     })
     .join('\n');
 }
@@ -95,7 +108,10 @@ export async function GET(request: Request) {
         : MAX_STREAM_HEIGHT;
 
       return new Response(
-        capPlaylistResolutions(rewritePlaylist(text, target), playlistMaxHeight),
+        capPlaylistResolutions(
+          rewritePlaylist(text, target, '/api/hls/playlist'),
+          playlistMaxHeight
+        ),
         {
         headers: {
           'Content-Type': 'application/vnd.apple.mpegurl',

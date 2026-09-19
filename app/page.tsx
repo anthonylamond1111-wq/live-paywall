@@ -41,6 +41,9 @@ export default function UFCAccess() {
   const [session, setSession] = useState<Session | null>(null);
   const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
   const adminTapRef = useRef({ count: 0, lastAt: 0 });
+  const sessionRef = useRef<Session | null>(null);
+
+  sessionRef.current = session;
 
   const handleSecretAdminTap = useCallback(() => {
     const now = Date.now();
@@ -57,9 +60,10 @@ export default function UFCAccess() {
   }, [router]);
 
   const loadStream = useCallback(async (activeSession?: Session | null) => {
+    const authSession = activeSession ?? sessionRef.current;
     const res = await fetch('/api/stream', {
       credentials: 'include',
-      headers: authHeaders(activeSession ?? session),
+      headers: authHeaders(authSession),
     });
     const data = (await res.json().catch(() => ({}))) as {
       url?: string;
@@ -79,7 +83,7 @@ export default function UFCAccess() {
     setStreamUrl(data.url);
     setView('stream');
     return true;
-  }, [session]);
+  }, []);
 
   const checkAccess = useCallback(async (activeSession: Session | null) => {
     const params = new URLSearchParams(window.location.search);
@@ -144,6 +148,7 @@ export default function UFCAccess() {
         const { data } = await supabase.auth.getSession();
         activeSession = data.session ?? null;
         if (!cancelled) {
+          sessionRef.current = activeSession;
           setSession(activeSession);
           const mail = activeSession?.user.email ?? null;
           setOwnerEmail(isSiteAdmin(mail) ? mail : null);
@@ -161,10 +166,20 @@ export default function UFCAccess() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, next) => {
+    } = supabase.auth.onAuthStateChange((event, next) => {
+      sessionRef.current = next;
       setSession(next);
       const mail = next?.user.email ?? null;
       setOwnerEmail(isSiteAdmin(mail) ? mail : null);
+
+      // Boot already handled the initial session — only re-check on real sign-in.
+      if (event === 'SIGNED_IN' && next) {
+        void checkAccess(next);
+      }
+      if (event === 'SIGNED_OUT') {
+        setStreamUrl(null);
+        setView('landing');
+      }
     });
 
     return () => {
@@ -189,7 +204,7 @@ export default function UFCAccess() {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeaders(session),
+          ...authHeaders(sessionRef.current),
         },
         body: JSON.stringify({
           email: email.trim(),
@@ -199,7 +214,7 @@ export default function UFCAccess() {
 
       if (res.status === 409 && data.alreadyPaid) {
         setMessage('This device already has access.');
-        await loadStream(session);
+        await loadStream(sessionRef.current);
         return;
       }
 
@@ -215,12 +230,12 @@ export default function UFCAccess() {
     } finally {
       setBusy(false);
     }
-  }, [email, loadStream, session]);
+  }, [email, loadStream]);
 
   const handleRestored = useCallback(async () => {
     setMessage('');
-    await loadStream(session);
-  }, [loadStream, session]);
+    await loadStream(sessionRef.current);
+  }, [loadStream]);
 
   const handlePreviewExpired = useCallback(() => {
     setPreviewExpired(true);
